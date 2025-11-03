@@ -15,7 +15,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             ThemeProvider(useDarkTheme = false) {
-                 App()
+                 AppContent()
             }
         }
     }
