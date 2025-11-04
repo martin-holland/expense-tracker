@@ -36,7 +36,14 @@ enum class Currency(
     fun format(amount: Double): String {
         return when (this) {
             JPY, CNY -> "${symbol}${amount.toInt()}" // No decimals for yen/yuan
-            else -> "$symbol${String.format("%.2f", amount)}"
+            else -> {
+                // Format to 2 decimal places (multiplatform compatible)
+                val integerPart = amount.toInt()
+                val fractionalPart = ((amount - integerPart) * 100).toInt().let {
+                    if (it < 10) "0$it" else "$it"
+                }
+                "$symbol$integerPart.$fractionalPart"
+            }
         }
     }
 }

@@ -7,7 +7,7 @@ import androidx.lifecycle.ViewModel
 import com.example.expensetracker.model.Currency
 import com.example.expensetracker.model.Expense
 import com.example.expensetracker.model.ExpenseCategory
-import kotlinx.datetime.*
+import kotlinx.datetime.LocalDateTime
 
 /**
  * ViewModel for managing Expense History state
@@ -186,8 +186,12 @@ class ExpenseHistoryViewModel : ViewModel() {
      * TODO: Remove when actual data source is implemented
      */
     private fun generateMockExpenses(): List<Expense> {
-        val now = Clock.System.now()
-        val timeZone = TimeZone.currentSystemDefault()
+        // Create static dates for mock data (no Clock.System needed for iOS compatibility)
+        val nov1 = LocalDateTime(2024, 11, 1, 12, 0)
+        val oct31 = LocalDateTime(2024, 10, 31, 14, 30)
+        val oct30 = LocalDateTime(2024, 10, 30, 10, 15)
+        val oct29 = LocalDateTime(2024, 10, 29, 16, 45)
+        val oct28 = LocalDateTime(2024, 10, 28, 9, 0)
 
         return listOf(
             Expense(
@@ -196,7 +200,7 @@ class ExpenseHistoryViewModel : ViewModel() {
                 description = "Lunch at restaurant",
                 amount = 45.50,
                 currency = Currency.USD,
-                date = now.minus(2, DateTimeUnit.DAY, timeZone).toLocalDateTime(timeZone)
+                date = nov1
             ),
             Expense(
                 id = "2",
@@ -204,7 +208,7 @@ class ExpenseHistoryViewModel : ViewModel() {
                 description = "Gas station",
                 amount = 120.00,
                 currency = Currency.USD,
-                date = now.minus(2, DateTimeUnit.DAY, timeZone).toLocalDateTime(timeZone)
+                date = nov1
             ),
             Expense(
                 id = "3",
@@ -212,7 +216,7 @@ class ExpenseHistoryViewModel : ViewModel() {
                 description = "Coffee shop",
                 amount = 15.99,
                 currency = Currency.USD,
-                date = now.minus(3, DateTimeUnit.DAY, timeZone).toLocalDateTime(timeZone)
+                date = oct31
             ),
             Expense(
                 id = "4",
@@ -220,7 +224,7 @@ class ExpenseHistoryViewModel : ViewModel() {
                 description = "Electricity bill",
                 amount = 85.00,
                 currency = Currency.USD,
-                date = now.minus(3, DateTimeUnit.DAY, timeZone).toLocalDateTime(timeZone)
+                date = oct31
             ),
             Expense(
                 id = "5",
@@ -228,7 +232,7 @@ class ExpenseHistoryViewModel : ViewModel() {
                 description = "Grocery shopping",
                 amount = 32.50,
                 currency = Currency.USD,
-                date = now.minus(4, DateTimeUnit.DAY, timeZone).toLocalDateTime(timeZone)
+                date = oct30
             ),
             Expense(
                 id = "6",
@@ -236,7 +240,7 @@ class ExpenseHistoryViewModel : ViewModel() {
                 description = "Uber ride",
                 amount = 50.00,
                 currency = Currency.USD,
-                date = now.minus(4, DateTimeUnit.DAY, timeZone).toLocalDateTime(timeZone)
+                date = oct30
             ),
             Expense(
                 id = "7",
@@ -244,7 +248,7 @@ class ExpenseHistoryViewModel : ViewModel() {
                 description = "Online subscription",
                 amount = 25.99,
                 currency = Currency.EUR,
-                date = now.minus(5, DateTimeUnit.DAY, timeZone).toLocalDateTime(timeZone)
+                date = oct29
             ),
             Expense(
                 id = "8",
@@ -252,7 +256,7 @@ class ExpenseHistoryViewModel : ViewModel() {
                 description = "Internet bill",
                 amount = 180.00,
                 currency = Currency.USD,
-                date = now.minus(6, DateTimeUnit.DAY, timeZone).toLocalDateTime(timeZone)
+                date = oct28
             )
         )
     }
