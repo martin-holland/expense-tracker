@@ -32,60 +32,76 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.expensetracker.model.Currency
+import com.example.expensetracker.viewmodel.SettingsViewModel
 
 
 @Composable
-@Preview
-fun SettingsScreen() {
-    MaterialTheme {
-        Column(
-            modifier = Modifier
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .safeContentPadding()
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-
-        ) {
-            // Header
-            Text(
-                text = "Settings",
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(bottom = 24.dp)
-            )
-
-            // Subheading
-            Text(
-                text = "Expense Tracker",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+fun SettingsScreen(
+    viewModel: SettingsViewModel = viewModel()
+) {
+    val selectedCurrency by viewModel.selectedCurrency.collectAsState()
+    val selectedThemeOption by viewModel.selectedThemeOption.collectAsState()
+    val isVoiceInputEnabled by viewModel.isVoiceInputEnabled.collectAsState() // Add this
 
 
-            // Sections
-//            SettingsCardVoiceInput()
-            SettingsCardCurrency()
-            SettingsCardAppearance()
-            SettingsAccessibilityFeatures()
-            SettingsAppInfo()
+    Column(
+        modifier = Modifier
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .safeContentPadding()
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+    ) {
+        // Header
+        Text(
+            text = "Settings",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
 
-        }
+        // Subheading
+        Text(
+            text = "Expense Tracker",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        // Sections
+
+        SettingsCardVoiceInput(
+            isVoiceInputEnabled = isVoiceInputEnabled,
+            onVoiceInputToggled = { viewModel.toggleVoiceInput(it) }
+        )
+
+        SettingsCardCurrency(
+            selectedCurrency = selectedCurrency,
+            onCurrencySelected = { viewModel.setCurrency(it) }
+        )
+
+        SettingsCardAppearance(
+            selectedThemeOption = selectedThemeOption,
+            onThemeOptionSelected = { viewModel.setThemeOption(it) }
+        )
+
+        SettingsAccessibilityFeatures()
+        SettingsAppInfo()
     }
 }
 
 
 // Voice Input Card
 @Composable
-fun SettingsCardVoiceInput() {
+fun SettingsCardVoiceInput(
+    isVoiceInputEnabled: Boolean,
+    onVoiceInputToggled: (Boolean) -> Unit
+) {
     SettingsCard(
         icon = Icons.Default.Mic,
         title = "Voice Input",
         description = "Enable voice-based expense entry"
     ) {
-
-
-
-        // not sure if below theme and boxes should be in the same section?
-        Text( // bold text, smaller than subheading, little bigger than normal i believe
+        Text(
             text = "Enable voice-based input",
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(bottom = 4.dp)
@@ -96,27 +112,29 @@ fun SettingsCardVoiceInput() {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text("Use your voice to quickly add expenses")
+
             }
-            Switch(checked = false, onCheckedChange = {})
+            Switch(
+                checked = isVoiceInputEnabled,
+                onCheckedChange = { onVoiceInputToggled(it) }
+            )
         }
-
-
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsCardCurrency() {
-    var expanded by remember { mutableStateOf(false) }      // menu visibility
-    var selectedOption by remember { mutableStateOf("Dollar") } // selected item
-    val options = listOf("Euro", "Dollar", "Yen")
+fun SettingsCardCurrency(
+    selectedCurrency: Currency,
+    onCurrencySelected: (Currency) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
 
     SettingsCard(
         icon = Icons.Default.AttachMoney,
         title = "Currency",
         description = "Select your preferred currency"
     ) {
-
         Text("Default Currency", fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
 
@@ -124,19 +142,31 @@ fun SettingsCardCurrency() {
             expanded = expanded,
             onExpandedChange = { expanded = !expanded }
         ) {
-            TextField(
-                value = selectedOption,
+            // Use OutlinedTextField instead of TextField for better visibility
+            OutlinedTextField(
+                value = "${selectedCurrency.symbol} ${selectedCurrency.displayName} (${selectedCurrency.code})",
                 onValueChange = {},
                 readOnly = true,
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                modifier = Modifier.fillMaxWidth()
+                trailingIcon = {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(), // ← THIS IS IMPORTANT!
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
             )
-            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                options.forEach {
+
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                Currency.entries.forEach { currency ->
                     DropdownMenuItem(
-                        text = { Text(it) },
+                        text = {
+                            Text("${currency.symbol} ${currency.displayName} (${currency.code})")
+                        },
                         onClick = {
-                            selectedOption = it
+                            onCurrencySelected(currency)
                             expanded = false
                         }
                     )
@@ -146,9 +176,11 @@ fun SettingsCardCurrency() {
     }
 }
 
-
 @Composable
-fun SettingsCardAppearance() {
+fun SettingsCardAppearance(
+    selectedThemeOption: String,
+    onThemeOptionSelected: (String) -> Unit
+) {
     SettingsCard(
         icon = Icons.Default.Palette,
         title = "Appearance",
@@ -157,19 +189,32 @@ fun SettingsCardAppearance() {
         Text("Theme", fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            ThemeOptionButton("Light", true)
-            ThemeOptionButton("Dark", false)
-            ThemeOptionButton("System", false)
+            ThemeOptionButton(
+                text = "Light",
+                selected = selectedThemeOption == "Light",
+                onClick = { onThemeOptionSelected("Light") }
+            )
+            ThemeOptionButton(
+                text = "Dark",
+                selected = selectedThemeOption == "Dark",
+                onClick = { onThemeOptionSelected("Dark") }
+            )
+            ThemeOptionButton(
+                text = "System",
+                selected = selectedThemeOption == "System",
+                onClick = { onThemeOptionSelected("System") }
+            )
         }
     }
 }
+
 @Composable
-fun ThemeOptionButton(text: String, selected: Boolean) {
+fun ThemeOptionButton(text: String, selected: Boolean, onClick: () -> Unit) {
     val bg = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
     val color = if (selected) Color.White else MaterialTheme.colorScheme.onSurface
 
     Button(
-        onClick = {},
+        onClick = onClick,
         colors = ButtonDefaults.buttonColors(containerColor = bg, contentColor = color),
         shape = RoundedCornerShape(12.dp),
     ) {
