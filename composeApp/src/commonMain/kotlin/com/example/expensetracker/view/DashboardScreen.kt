@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -21,8 +22,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.Card
@@ -37,14 +40,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.expensetracker.model.Currency
 import com.example.expensetracker.model.ExpenseCategory
 import com.example.expensetracker.viewmodel.DashBoardViewModel
 import com.example.theme.com.example.expensetracker.LocalAppColors
+import expensetracker.composeapp.generated.resources.Res
+import network.chaintech.cmpcharts.common.components.Legends
+import network.chaintech.cmpcharts.common.model.PlotType
+import network.chaintech.cmpcharts.ui.piechart.charts.PieChart
+import network.chaintech.cmpcharts.ui.piechart.models.PieChartConfig
+import network.chaintech.cmpcharts.ui.piechart.models.PieChartData
 import kotlin.text.category
 
 @Composable
@@ -72,7 +84,9 @@ fun DashboardScreen(
             .statusBarsPadding() // Add padding for system status bar
     ){
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
         ) {
             Header()
             MonthlySpendCard(totalSpent,currentMonth,chosenCurrenty)
@@ -180,18 +194,59 @@ fun ExpenseBreakdownCard(categorySumMap:Map<ExpenseCategory,Double>){
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
     modifier = Modifier
-            .padding(16.dp)
+//            .padding(16.dp)
             .fillMaxWidth()
             .border(BorderStroke(2.dp,Color(0xFFececf0)))
     ){
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Expense Breakdown", fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
+            PieChartExample()
+//            Spacer(modifier = Modifier.height(8.dp))
             CategoryGrid(categorySumMap)
 
         }
     }
 }
+
+@Composable
+fun PieChartExample() {
+    val pieChartData = PieChartData(
+        slices = listOf(
+            PieChartData.Slice("Android", 30f, Color(0xFF006400)),
+            PieChartData.Slice("iOS", 30f, Color(0xFF00008B)),
+        ),
+        plotType = PlotType.Pie
+    )
+    val pieChartConfig =
+        PieChartConfig(
+            labelVisible = true,
+            activeSliceAlpha = .9f,
+            isEllipsizeEnabled = true,
+            sliceLabelTypeface = FontWeight.Bold,
+//            fontFamily = FontFamily(
+//                Font(Res.font.Roboto_Medium, weight = FontWeight.Normal)
+//            ),
+            isAnimationEnable = true,
+            chartPadding = 30,
+            backgroundColor = Color.White,
+            showSliceLabels = false,
+            animationDuration = 1500
+        )
+    Column(modifier = Modifier.height(350.dp)) {
+        Spacer(modifier = Modifier.height(20.dp))
+//        Legends(legendsConfig = getLegendsConfigFromPieChartData(pieChartData, 3))
+        PieChart(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(300.dp),
+            pieChartData,
+            pieChartConfig
+        ) { slice ->
+            //Custom event on slice tap
+        }
+    }
+}
+
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -199,7 +254,9 @@ fun CategoryGrid(categorySumMap: Map<ExpenseCategory, Double>) {
     val categories = categorySumMap.keys.toList()
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
-        modifier = Modifier.padding(16.dp),
+        modifier = Modifier
+//            .padding(16.dp)
+            .heightIn(max=250.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
