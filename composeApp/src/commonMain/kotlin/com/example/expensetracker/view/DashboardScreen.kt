@@ -223,7 +223,7 @@ fun CategorySummaryCard(
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.LightGray),
+        colors = CardDefaults.cardColors(containerColor = category.backgroundColor),
         modifier = modifier
     ) {
         Row(
