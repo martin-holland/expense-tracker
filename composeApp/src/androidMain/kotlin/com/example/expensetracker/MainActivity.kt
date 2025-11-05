@@ -13,7 +13,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            SettingsScreen()
+            App()
         }
     }
 }
@@ -23,4 +23,3 @@ class MainActivity : ComponentActivity() {
 fun AppAndroidPreview() {
     App()
 }
-
