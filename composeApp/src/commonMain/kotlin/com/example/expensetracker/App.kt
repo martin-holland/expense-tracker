@@ -22,7 +22,8 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 /** Enum representing different screens in the app Useful for navigation management */
 enum class AppScreen {
     HOME,
-    EXPENSE_HISTORY
+    EXPENSE_HISTORY,
+    DASHBOARD
 }
 
 @Composable
@@ -44,6 +45,8 @@ fun AppContent() {
                 )
         AppScreen.EXPENSE_HISTORY ->
                 ExpenseHistoryScreen(onNavigateBack = { currentScreen = AppScreen.HOME })
+        AppScreen.DASHBOARD ->
+
     }
 }
 
