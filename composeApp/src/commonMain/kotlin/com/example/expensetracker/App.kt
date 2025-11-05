@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.expensetracker.view.DashboardScreen
 import com.example.expensetracker.view.ExpenseHistoryScreen
 import com.example.theme.com.example.expensetracker.LocalAppColors
 import com.example.theme.com.example.expensetracker.ThemeProvider
@@ -41,18 +42,20 @@ fun AppContent() {
     when (currentScreen) {
         AppScreen.HOME ->
                 HomeScreen(
-                        onNavigateToExpenseHistory = { currentScreen = AppScreen.EXPENSE_HISTORY }
+                        onNavigateToExpenseHistory = { currentScreen = AppScreen.EXPENSE_HISTORY },
+                    onNavigateToDashBoard = {currentScreen = AppScreen.DASHBOARD}
                 )
         AppScreen.EXPENSE_HISTORY ->
                 ExpenseHistoryScreen(onNavigateBack = { currentScreen = AppScreen.HOME })
         AppScreen.DASHBOARD ->
+            DashboardScreen()
 
     }
 }
 
 /** Home screen with navigation to Expense History */
 @Composable
-private fun HomeScreen(onNavigateToExpenseHistory: () -> Unit) {
+private fun HomeScreen(onNavigateToExpenseHistory: () -> Unit, onNavigateToDashBoard: () -> Unit) {
     val appColors = LocalAppColors.current
     var showContent by remember { mutableStateOf(false) }
 
@@ -74,6 +77,9 @@ private fun HomeScreen(onNavigateToExpenseHistory: () -> Unit) {
         // Navigation button to Expense History
         Button(onClick = onNavigateToExpenseHistory, modifier = Modifier.fillMaxWidth()) {
             Text("View Expense History")
+        }
+        Button(onClick = onNavigateToDashBoard, modifier = Modifier.fillMaxWidth()) {
+            Text("View Dashboard")
         }
 
         // Original demo content
