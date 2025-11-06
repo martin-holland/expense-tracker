@@ -69,6 +69,7 @@ import kotlin.text.category
 import kotlin.text.get
 import kotlin.toString
 import kotlin.Float
+import kotlin.math.round
 
 @Composable
 fun DashboardScreen(
@@ -203,16 +204,20 @@ private fun retrieveCurrencySymbol(currency: Currency):String{
 @Composable
 fun ExpenseBreakdownCard(categorySumMap:Map<ExpenseCategory,Double>){
     Card (
-        shape = RoundedCornerShape(12.dp),
+//        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
     modifier = Modifier
-//            .padding(16.dp)
-            .fillMaxWidth()
-            .border(BorderStroke(2.dp,Color(0xFFececf0)))
+            .padding(16.dp)
+            .fillMaxSize()
+            .border(BorderStroke(
+                width=2.dp,
+                color =Color(0xFFececf0)),
+                shape = RoundedCornerShape(12.dp))
+
     ){
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Expense Breakdown", fontWeight = FontWeight.Bold)
-            PieChartExample(categorySumMap)
+            CategoryPieChart(categorySumMap)
 //            Spacer(modifier = Modifier.height(8.dp))
             CategoryGrid(categorySumMap)
 
@@ -235,7 +240,7 @@ private fun getPieChartData(categorySumMap:Map<ExpenseCategory,Double>): List<Pi
 }
 
 @Composable
-fun PieChartExample(categorySumMap:Map<ExpenseCategory,Double>) {
+fun CategoryPieChart(categorySumMap:Map<ExpenseCategory,Double>) {
     val pieChartData = PieChartData(
 //        slices = listOf(
 //            PieChartData.Slice("Android", 30f, Color(0xFF006400)),
