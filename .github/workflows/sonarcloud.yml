@@ -5,7 +5,7 @@ on:
     branches:
       - main
       - dev
-      - MAD-*         # Automatically match all feature branches like MAD-123, MAD-45-fix, etc.
+      - 'MAD-**'      # Automatically match all feature branches like MAD-123, MAD-45-fix, etc.
   pull_request:
     branches:
       - main
@@ -39,6 +39,21 @@ jobs:
         with:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar
+
+      # Cache Gradle dependencies
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # Build the project (required for SonarCloud analysis)
+      - name: Build with Gradle
+        run: ./gradlew build --no-daemon
 
       - name: Analyze with SonarCloud
         uses: SonarSource/sonarcloud-github-action@v2.2.0
