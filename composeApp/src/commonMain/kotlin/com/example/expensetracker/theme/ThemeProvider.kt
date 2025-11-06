@@ -1,4 +1,4 @@
-package com.example.theme.com.example.expensetracker
+package com.example.expensetracker.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
