@@ -1,5 +1,5 @@
 package com.example.theme.com.example.expensetracker
-
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
@@ -7,17 +7,25 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.example.expensetracker.viewmodel.SettingsViewModel
 
 @Composable
 fun ThemeProvider(
-    useDarkTheme: Boolean = isSystemInDarkTheme(),
+    viewModel: SettingsViewModel = viewModel(), // Same ViewModel type used in SettingsScreen
     content: @Composable () -> Unit
 ) {
-    val appColorScheme = if (useDarkTheme) {
-        DarkAppColorScheme
-    } else {
-        LightAppColorScheme
+    val selectedThemeOption by viewModel.selectedThemeOption.collectAsState()
+    val systemDark = isSystemInDarkTheme()
+
+    val useDarkTheme = when (selectedThemeOption) {
+        "Dark" -> true
+        "Light" -> false
+        else -> systemDark
     }
+
+    val appColorScheme = if (useDarkTheme) DarkAppColorScheme else LightAppColorScheme
 
     val colors = if (useDarkTheme) {
         darkColorScheme(

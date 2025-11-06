@@ -28,4 +28,17 @@ enum class Currency(
         }
     }
 
+
+    /**
+     * Formats an amount with this currency
+     * @param amount The amount to format
+     * @return Formatted string like "$32.50" or "€25.99"
+     */
+    fun format(amount: Double): String {
+        return when (this) {
+            JPY, CNY -> "${symbol}${amount.toInt()}" // No decimals for yen/yuan
+            else -> "$symbol${String.format("%.2f", amount)}"
+        }
+    }
+
 }

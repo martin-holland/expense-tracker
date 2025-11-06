@@ -8,26 +8,17 @@ import kotlinx.coroutines.flow.StateFlow
 
 class SettingsViewModel : ViewModel() {
 
-
-
     private val _selectedCurrency = MutableStateFlow(Currency.USD)
-
     val selectedCurrency: StateFlow<Currency> = _selectedCurrency
-
     private val _isVoiceInputEnabled = MutableStateFlow(false)
     val isVoiceInputEnabled: StateFlow<Boolean> = _isVoiceInputEnabled
 
-
-
     // Other states...
-
-    private val _selectedThemeOption = MutableStateFlow("Light")
+    private val _selectedThemeOption = MutableStateFlow("System")
     val selectedThemeOption: StateFlow<String> = _selectedThemeOption
 
     // Functions to update state
 
-
-    // Add function for voice input toggle
     fun toggleVoiceInput(enabled: Boolean) {
         _isVoiceInputEnabled.value = enabled
     }
@@ -35,11 +26,7 @@ class SettingsViewModel : ViewModel() {
         _selectedCurrency.value = currency
     }
 
-
-
     fun setThemeOption(option: String) {
         _selectedThemeOption.value = option
     }
-
-
 }
