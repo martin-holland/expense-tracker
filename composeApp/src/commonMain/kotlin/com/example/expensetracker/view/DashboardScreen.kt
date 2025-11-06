@@ -68,6 +68,7 @@ import network.chaintech.cmpcharts.ui.piechart.models.PieChartData
 import kotlin.text.category
 import kotlin.text.get
 import kotlin.toString
+import kotlin.Float
 
 @Composable
 fun DashboardScreen(
@@ -211,7 +212,7 @@ fun ExpenseBreakdownCard(categorySumMap:Map<ExpenseCategory,Double>){
     ){
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Expense Breakdown", fontWeight = FontWeight.Bold)
-            PieChartExample()
+            PieChartExample(categorySumMap)
 //            Spacer(modifier = Modifier.height(8.dp))
             CategoryGrid(categorySumMap)
 
@@ -219,13 +220,28 @@ fun ExpenseBreakdownCard(categorySumMap:Map<ExpenseCategory,Double>){
     }
 }
 
+private fun getPieChartData(categorySumMap:Map<ExpenseCategory,Double>): List<PieChartData.Slice> {
+    var newPieChartData = mutableListOf<PieChartData.Slice>()
+    val sum = categorySumMap.values.sumOf { it }
+    val totalPieSize = 60f
+    categorySumMap.forEach { (key, value) ->
+        val mappedValue = (value * totalPieSize / sum).toFloat()
+        val newPieChartDataEntry = PieChartData.Slice(key.displayName,mappedValue,key.backgroundColor)
+        newPieChartData.add(newPieChartDataEntry)
+    }
+
+    return newPieChartData
+
+}
+
 @Composable
-fun PieChartExample() {
+fun PieChartExample(categorySumMap:Map<ExpenseCategory,Double>) {
     val pieChartData = PieChartData(
-        slices = listOf(
-            PieChartData.Slice("Android", 30f, Color(0xFF006400)),
-            PieChartData.Slice("iOS", 30f, Color(0xFF00008B)),
-        ),
+//        slices = listOf(
+//            PieChartData.Slice("Android", 30f, Color(0xFF006400)),
+//            PieChartData.Slice("iOS", 30f, Color(0xFF00008B)),
+//        ),
+        slices = getPieChartData(categorySumMap),
         plotType = PlotType.Pie
     )
     val pieChartConfig =
@@ -254,6 +270,7 @@ fun PieChartExample() {
             pieChartConfig
         ) { slice ->
             //Custom event on slice tap
+//            Text("${slice.label} - ${slice.value}")
         }
     }
 }
