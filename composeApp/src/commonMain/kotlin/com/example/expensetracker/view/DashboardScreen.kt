@@ -107,7 +107,8 @@ fun DashboardScreen(
 //            Text("This is overview")
 //            Text("This is pie chart")
 //            Text("This is graph chart")
-            BarChartExample()
+//            BarChartExample()
+            WeekBarCard()
         }
     }
 }
@@ -177,7 +178,6 @@ private fun Header(){
 @Composable
 fun MonthlySpendCard(spend: Double, month: String, currency: Currency) {
     Card(
-        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF00BFAE)),
         modifier = Modifier
             .padding(16.dp)
@@ -218,7 +218,6 @@ fun ExpenseBreakdownCard(categorySumMap:Map<ExpenseCategory,Double>){
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Expense Breakdown", fontWeight = FontWeight.Bold)
             CategoryPieChart(categorySumMap)
-//            Spacer(modifier = Modifier.height(8.dp))
             CategoryGrid(categorySumMap)
 
         }
@@ -234,7 +233,6 @@ private fun getPieChartData(categorySumMap:Map<ExpenseCategory,Double>): List<Pi
         val newPieChartDataEntry = PieChartData.Slice(key.displayName,mappedValue,key.backgroundColor)
         newPieChartData.add(newPieChartDataEntry)
     }
-
     return newPieChartData
 
 }
@@ -242,10 +240,6 @@ private fun getPieChartData(categorySumMap:Map<ExpenseCategory,Double>): List<Pi
 @Composable
 fun CategoryPieChart(categorySumMap:Map<ExpenseCategory,Double>) {
     val pieChartData = PieChartData(
-//        slices = listOf(
-//            PieChartData.Slice("Android", 30f, Color(0xFF006400)),
-//            PieChartData.Slice("iOS", 30f, Color(0xFF00008B)),
-//        ),
         slices = getPieChartData(categorySumMap),
         plotType = PlotType.Pie
     )
@@ -274,8 +268,7 @@ fun CategoryPieChart(categorySumMap:Map<ExpenseCategory,Double>) {
             pieChartData,
             pieChartConfig
         ) { slice ->
-            //Custom event on slice tap
-//            Text("${slice.label} - ${slice.value}")
+
         }
     }
 }
@@ -288,7 +281,6 @@ fun CategoryGrid(categorySumMap: Map<ExpenseCategory, Double>) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = Modifier
-//            .padding(16.dp)
             .heightIn(max=250.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -346,6 +338,9 @@ private fun <K,V> Map<K,V>.toSortedMap(comparator:Comparator< in K>):Map<K,V>{
         .sortedWith(compareBy(comparator){ it.key })
         .associate { it.toPair() }
 }
+
+
+
 @Composable
 fun BarChartExample() {
     val maxRange = 50
@@ -353,16 +348,11 @@ fun BarChartExample() {
     val yStepSize = 10
 
     val xAxisData = AxisData.Builder()
-//        .fontFamily(
-//            fontFamily = FontFamily(
-//                Font(Res.font.Roboto_Regular, weight = FontWeight.Normal)
-//            )
-//        )
         .axisStepSize(30.dp)
         .steps(barData.size - 1)
         .bottomPadding(40.dp)
         .axisLabelAngle(20f)
-        .startDrawPadding(48.dp)
+        .startDrawPadding(20.dp)
         .axisLabelColor(Color.Black)
         .axisLineColor(Color.Black)
         .labelData { index -> barData[index].label }
@@ -381,7 +371,7 @@ fun BarChartExample() {
         yAxisData = yAxisData,
         barStyle = BarStyle(
             cornerRadius = 5.dp,
-            paddingBetweenBars = 20.dp,
+            paddingBetweenBars = 10.dp,
             barWidth = 25.dp,
             selectionHighlightData = SelectionHighlightData(
                 highlightBarColor = Color.LightGray,
@@ -398,17 +388,41 @@ fun BarChartExample() {
 
 private fun getBarChartData(count: Int, maxRange: Int): List<BarData> {
     val list = arrayListOf<BarData>()
-    for (index in 0 until count) {
+    val DateOfWeek = listOf("Mon","Tue","Wed","Thu","Fri","Sat","Sun")
+    for (index in 0 until DateOfWeek.size) {
         list.add(
             BarData(
                 point = network.chaintech.cmpcharts.common.model.Point(
                     x = index.toFloat(),
                     y = (0..maxRange).random().toFloat()
                 ),
-                label = "Label ${index + 1}",
+                label = "${DateOfWeek[index]}",
                 color = Color(0xFF00BFAE)
             )
         )
     }
     return list
+}
+
+@Composable
+fun WeekBarCard(modifier: Modifier = Modifier){
+
+    Card (
+//        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        modifier = Modifier
+            .padding(16.dp)
+            .fillMaxSize()
+            .border(BorderStroke(
+                width=2.dp,
+                color =Color(0xFFececf0)),
+                shape = RoundedCornerShape(12.dp))
+
+    ){
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("This Week", fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            BarChartExample()
+        }
+    }
 }
