@@ -4,6 +4,8 @@
 
 This document provides comprehensive documentation for the Room database implementation in the Expense Tracker Kotlin Multiplatform application. The implementation uses Room KMP to provide a shared database solution for both Android and iOS platforms.
 
+> **Quick Status Check:** See [STATUS.md](./STATUS.md) for current implementation status and platform support.
+
 ## Architecture
 
 The database implementation follows the **Repository Pattern** and **MVVM Architecture**:
@@ -80,6 +82,7 @@ data class ExpenseEntity(
 ```
 
 **Key Features:**
+
 - Uses `String` as primary key for UUID support
 - Includes extension functions to convert between `ExpenseEntity` and domain model `Expense`
 - All fields are non-nullable for data integrity
@@ -91,6 +94,7 @@ Converts complex types to database-storable primitives.
 **Location:** `commonMain/kotlin/com/example/expensetracker/data/database/TypeConverters.kt`
 
 **Conversions:**
+
 - `LocalDateTime` ↔ `String` (ISO-8601 format)
 - `ExpenseCategory` ↔ `String` (enum name)
 - `Currency` ↔ `String` (currency code)
@@ -103,19 +107,19 @@ Defines all database operations.
 
 **Available Operations:**
 
-| Method | Description | Return Type |
-|--------|-------------|-------------|
-| `getAllExpenses()` | Gets all expenses, newest first | `Flow<List<ExpenseEntity>>` |
-| `getExpenseById(id)` | Gets single expense by ID | `suspend fun` → `ExpenseEntity?` |
-| `getExpensesByCategory(category)` | Filters by category | `Flow<List<ExpenseEntity>>` |
-| `insertExpense(expense)` | Insert/update single expense | `suspend fun` |
-| `insertExpenses(expenses)` | Bulk insert (for seeding) | `suspend fun` |
-| `updateExpense(expense)` | Update existing expense | `suspend fun` |
-| `deleteExpense(expense)` | Delete expense | `suspend fun` |
-| `deleteExpenseById(id)` | Delete by ID | `suspend fun` |
-| `getExpenseCount()` | Count all expenses | `suspend fun` → `Int` |
-| `getExpensesByDateRange()` | Filter by date range | `Flow<List<ExpenseEntity>>` |
-| `getExpensesByAmountRange()` | Filter by amount range | `Flow<List<ExpenseEntity>>` |
+| Method                            | Description                     | Return Type                      |
+| --------------------------------- | ------------------------------- | -------------------------------- |
+| `getAllExpenses()`                | Gets all expenses, newest first | `Flow<List<ExpenseEntity>>`      |
+| `getExpenseById(id)`              | Gets single expense by ID       | `suspend fun` → `ExpenseEntity?` |
+| `getExpensesByCategory(category)` | Filters by category             | `Flow<List<ExpenseEntity>>`      |
+| `insertExpense(expense)`          | Insert/update single expense    | `suspend fun`                    |
+| `insertExpenses(expenses)`        | Bulk insert (for seeding)       | `suspend fun`                    |
+| `updateExpense(expense)`          | Update existing expense         | `suspend fun`                    |
+| `deleteExpense(expense)`          | Delete expense                  | `suspend fun`                    |
+| `deleteExpenseById(id)`           | Delete by ID                    | `suspend fun`                    |
+| `getExpenseCount()`               | Count all expenses              | `suspend fun` → `Int`            |
+| `getExpensesByDateRange()`        | Filter by date range            | `Flow<List<ExpenseEntity>>`      |
+| `getExpensesByAmountRange()`      | Filter by amount range          | `Flow<List<ExpenseEntity>>`      |
 
 ### 4. ExpenseDatabase
 
@@ -124,6 +128,7 @@ Main Room database configuration.
 **Location:** `commonMain/kotlin/com/example/expensetracker/data/database/ExpenseDatabase.kt`
 
 **Configuration:**
+
 - Database name: `expense_tracker.db`
 - Version: 1
 - Entities: `ExpenseEntity`
@@ -133,6 +138,7 @@ Main Room database configuration.
 ### 5. Database Builders (Platform-Specific)
 
 #### Common (expect declarations)
+
 **Location:** `commonMain/kotlin/com/example/expensetracker/data/database/DatabaseBuilder.kt`
 
 ```kotlin
@@ -141,6 +147,7 @@ expect fun getDatabaseBuilder(): RoomDatabase.Builder<ExpenseDatabase>
 ```
 
 #### Android Implementation
+
 **Location:** `androidMain/kotlin/com/example/expensetracker/data/database/DatabaseBuilder.android.kt`
 
 - Uses `ApplicationContext` for database access
@@ -148,12 +155,14 @@ expect fun getDatabaseBuilder(): RoomDatabase.Builder<ExpenseDatabase>
 - Requires initialization in `MainActivity`
 
 **Initialization:**
+
 ```kotlin
 // In MainActivity.onCreate()
 AndroidDatabaseContext.init(this)
 ```
 
 #### iOS Implementation
+
 **Location:** `iosMain/kotlin/com/example/expensetracker/data/database/DatabaseBuilder.ios.kt`
 
 - Uses iOS Document Directory for database storage
@@ -167,12 +176,14 @@ Provides clean API for data access and handles seeding.
 **Location:** `commonMain/kotlin/com/example/expensetracker/data/repository/ExpenseRepository.kt`
 
 **Key Features:**
+
 - Singleton pattern for app-wide access
 - Automatic database seeding on first launch
 - Converts between entity and domain models
 - Provides Flow-based reactive data
 
 **Usage Example:**
+
 ```kotlin
 val repository = ExpenseRepository.getInstance()
 
@@ -202,6 +213,7 @@ ViewModel that uses the repository.
 **Location:** `commonMain/kotlin/com/example/expensetracker/viewmodel/ExpenseHistoryViewModel.kt`
 
 **Key Updates:**
+
 - Injects `ExpenseRepository` (default = singleton instance)
 - Observes database changes via Flow
 - All CRUD operations persist to database
@@ -214,12 +226,14 @@ The database is automatically seeded with 8 sample expenses on first launch.
 **Seed Data Location:** `ExpenseRepository.generateSeedData()`
 
 **Seed Logic:**
+
 1. Repository checks expense count on initialization
 2. If count = 0, inserts seed data
 3. Seed data includes variety of categories and currencies
 4. Seeding happens on background thread (doesn't block UI)
 
 **Seed Data:**
+
 - 8 expenses spanning 5 days (Oct 28 - Nov 1, 2024)
 - Categories: Food, Travel, Utilities, Other
 - Currencies: USD, EUR
@@ -230,6 +244,7 @@ The database is automatically seeded with 8 sample expenses on first launch.
 ### For ViewModel Developers
 
 **Step 1: Get Repository Instance**
+
 ```kotlin
 class MyViewModel(
     private val repository: ExpenseRepository = ExpenseRepository.getInstance()
@@ -239,6 +254,7 @@ class MyViewModel(
 ```
 
 **Step 2: Observe Data (Reactive)**
+
 ```kotlin
 private fun loadData() {
     viewModelScope.launch {
@@ -254,6 +270,7 @@ private fun loadData() {
 ```
 
 **Step 3: Perform CRUD Operations**
+
 ```kotlin
 // Create/Update
 fun saveExpense(expense: Expense) {
@@ -295,6 +312,7 @@ fun loadExpensesByCategory(category: ExpenseCategory) {
 If you're creating a new feature that needs expense data:
 
 1. **Get the repository:**
+
    ```kotlin
    val repository = ExpenseRepository.getInstance()
    ```
@@ -302,6 +320,7 @@ If you're creating a new feature that needs expense data:
 2. **Access data via repository methods** (never access DAO directly)
 
 3. **Use coroutines for all operations:**
+
    ```kotlin
    viewModelScope.launch {
        val count = repository.getExpenseCount()
@@ -345,6 +364,7 @@ Composable recomposes with new data
 ## Platform Initialization
 
 ### Android
+
 **Required:** Initialize database context in `MainActivity`:
 
 ```kotlin
@@ -358,7 +378,10 @@ class MainActivity : ComponentActivity() {
 ```
 
 ### iOS
+
 **No initialization required** - database location is determined automatically.
+
+> **Note:** For iOS-specific setup details and migration path, see [IOS_UPDATES.md](./IOS_UPDATES.md)
 
 ## Testing
 
@@ -395,6 +418,7 @@ fun tearDown() {
 When you need to update the database schema:
 
 1. **Update Entity:**
+
    ```kotlin
    @Entity(tableName = "expenses")
    data class ExpenseEntity(
@@ -404,6 +428,7 @@ When you need to update the database schema:
    ```
 
 2. **Increment Database Version:**
+
    ```kotlin
    @Database(
        entities = [ExpenseEntity::class],
@@ -413,6 +438,7 @@ When you need to update the database schema:
    ```
 
 3. **Add Migration:**
+
    ```kotlin
    val MIGRATION_1_2 = object : Migration(1, 2) {
        override fun migrate(database: SupportSQLiteDatabase) {
@@ -479,10 +505,19 @@ kotlin = "2.2.20"
 
 ## Further Reading
 
+### Official Documentation
+
 - [Room KMP Official Documentation](https://developer.android.com/kotlin/multiplatform/room)
 - [Kotlin Flows](https://kotlinlang.org/docs/flow.html)
 - [MVVM Architecture](https://developer.android.com/topic/architecture)
 - [Repository Pattern](https://developer.android.com/codelabs/basic-android-kotlin-compose-add-repository)
+
+### Project Documentation
+
+- [Implementation Status](./STATUS.md) - Quick status and platform support
+- [iOS Updates & Best Practices](./IOS_UPDATES.md) - iOS-specific details
+- [Advanced Features](./ADVANCED_FEATURES.md) - Transactions and KMP limitations
+- [Documentation Index](../README.md) - Main documentation index
 
 ## Summary
 
@@ -494,7 +529,8 @@ This implementation provides:
 ✅ **Clean Architecture** with Repository Pattern  
 ✅ **Type-Safe** queries with Room  
 ✅ **Easy to Extend** for new features  
-✅ **Production-Ready** error handling  
+✅ **Production-Ready** error handling
 
 The database is ready to use across your entire application. Simply get the repository instance and start querying!
 
+> **For current implementation status and platform support, see [STATUS.md](./STATUS.md)**

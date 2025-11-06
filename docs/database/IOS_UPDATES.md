@@ -2,7 +2,9 @@
 
 ## Latest Updates (November 2025)
 
-Based on the official Android documentation and latest Room KMP releases, here are the key updates and best practices for iOS support:
+Based on the official Android documentation and latest Room KMP releases, here are the key updates and best practices for iOS support.
+
+> **Note:** For overall implementation status, see [STATUS.md](./STATUS.md)
 
 ## ✅ Current Implementation Status
 
@@ -110,6 +112,8 @@ internal fun createDatabase(builder: RoomDatabase.Builder<ExpenseDatabase>): Exp
 3. **Type Converters**: Work across all platforms
 4. **Flow Support**: Reactive updates on all platforms
 5. **Migration Support**: Proper database migrations
+
+> **Note:** For detailed implementation guide, see [IMPLEMENTATION.md](./IMPLEMENTATION.md)
 
 ## ⚠️ Known Limitations (Alpha)
 
@@ -263,7 +267,13 @@ open iosApp/iosApp.xcodeproj
 - [Room KMP Migration Codelab](https://developer.android.com/codelabs/kmp-migrate-room)
 - [SQLite Driver APIs](https://developer.android.com/kotlin/multiplatform/sqlite)
 - [Room Release Notes](https://developer.android.com/jetpack/androidx/releases/room)
-- [Advanced Features & Limitations](./ROOM_ADVANCED_FEATURES.md) - **NEW!** Based on official docs
+
+### Project Documentation
+
+- [Implementation Status](./STATUS.md) - Overall status and quick reference
+- [Full Implementation Guide](./IMPLEMENTATION.md) - Comprehensive technical guide
+- [Advanced Features & Limitations](./ADVANCED_FEATURES.md) - Transactions and KMP limitations
+- [Documentation Index](../README.md) - Main documentation index
 
 ### Community Resources
 
@@ -283,6 +293,8 @@ Your implementation is **fully aligned with the latest Room KMP best practices**
 ✅ Production-ready code
 
 **The implementation is iOS-ready** and will work seamlessly once Room KMP reaches stable release. No code changes will be required - just a version bump!
+
+> **For overall project status and quick reference, see [STATUS.md](./STATUS.md)**
 
 ---
 
