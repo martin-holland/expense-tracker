@@ -52,12 +52,22 @@ import com.example.expensetracker.model.ExpenseCategory
 import com.example.expensetracker.viewmodel.DashBoardViewModel
 import com.example.theme.com.example.expensetracker.LocalAppColors
 import expensetracker.composeapp.generated.resources.Res
+import network.chaintech.cmpcharts.axis.AxisData
+import network.chaintech.cmpcharts.axis.DataCategoryOptions
 import network.chaintech.cmpcharts.common.components.Legends
 import network.chaintech.cmpcharts.common.model.PlotType
+import network.chaintech.cmpcharts.ui.barchart.BarChart
+import network.chaintech.cmpcharts.ui.barchart.models.BarChartData
+import network.chaintech.cmpcharts.ui.barchart.models.BarChartType
+import network.chaintech.cmpcharts.ui.barchart.models.BarData
+import network.chaintech.cmpcharts.ui.barchart.models.BarStyle
+import network.chaintech.cmpcharts.ui.barchart.models.SelectionHighlightData
 import network.chaintech.cmpcharts.ui.piechart.charts.PieChart
 import network.chaintech.cmpcharts.ui.piechart.models.PieChartConfig
 import network.chaintech.cmpcharts.ui.piechart.models.PieChartData
 import kotlin.text.category
+import kotlin.text.get
+import kotlin.toString
 
 @Composable
 fun DashboardScreen(
@@ -92,9 +102,10 @@ fun DashboardScreen(
             MonthlySpendCard(totalSpent,currentMonth,chosenCurrenty)
 
             ExpenseBreakdownCard(categorySumMap)
-            Text("This is overview")
-            Text("This is pie chart")
-            Text("This is graph chart")
+//            Text("This is overview")
+//            Text("This is pie chart")
+//            Text("This is graph chart")
+            BarChartExample()
         }
     }
 }
@@ -312,4 +323,70 @@ private fun <K,V> Map<K,V>.toSortedMap(comparator:Comparator< in K>):Map<K,V>{
     return this.entries
         .sortedWith(compareBy(comparator){ it.key })
         .associate { it.toPair() }
+}
+@Composable
+fun BarChartExample() {
+    val maxRange = 50
+    val barData = getBarChartData(10, maxRange)
+    val yStepSize = 10
+
+    val xAxisData = AxisData.Builder()
+//        .fontFamily(
+//            fontFamily = FontFamily(
+//                Font(Res.font.Roboto_Regular, weight = FontWeight.Normal)
+//            )
+//        )
+        .axisStepSize(30.dp)
+        .steps(barData.size - 1)
+        .bottomPadding(40.dp)
+        .axisLabelAngle(20f)
+        .startDrawPadding(48.dp)
+        .axisLabelColor(Color.Black)
+        .axisLineColor(Color.Black)
+        .labelData { index -> barData[index].label }
+        .build()
+    val yAxisData = AxisData.Builder()
+        .steps(yStepSize)
+        .labelAndAxisLinePadding(20.dp)
+        .axisOffset(20.dp)
+        .axisLabelColor(Color.Black)
+        .axisLineColor(Color.Black)
+        .labelData { index -> (index * (maxRange / yStepSize)).toString() }
+        .build()
+    val barChartData = BarChartData(
+        chartData = barData,
+        xAxisData = xAxisData,
+        yAxisData = yAxisData,
+        barStyle = BarStyle(
+            cornerRadius = 5.dp,
+            paddingBetweenBars = 20.dp,
+            barWidth = 25.dp,
+            selectionHighlightData = SelectionHighlightData(
+                highlightBarColor = Color.LightGray,
+                highlightTextColor = Color.White,
+                highlightTextTypeface = FontWeight.Bold,
+                highlightTextBackgroundColor = Color(0xFF800080), // Magenta
+                popUpLabel = { _, y -> " Value : $y " }
+            )
+        ),
+        horizontalExtraSpace = 10.dp,
+    )
+    BarChart(modifier = Modifier.height(350.dp), barChartData = barChartData)
+}
+
+private fun getBarChartData(count: Int, maxRange: Int): List<BarData> {
+    val list = arrayListOf<BarData>()
+    for (index in 0 until count) {
+        list.add(
+            BarData(
+                point = network.chaintech.cmpcharts.common.model.Point(
+                    x = index.toFloat(),
+                    y = (0..maxRange).random().toFloat()
+                ),
+                label = "Label ${index + 1}",
+                color = Color(0xFF00BFAE)
+            )
+        )
+    }
+    return list
 }
