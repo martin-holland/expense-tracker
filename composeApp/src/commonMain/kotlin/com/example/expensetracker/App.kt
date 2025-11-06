@@ -1,28 +1,29 @@
 package com.example.expensetracker
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.example.expensetracker.view.ExpenseHistoryScreen
 import com.example.theme.com.example.expensetracker.LocalAppColors
 import com.example.theme.com.example.expensetracker.ThemeProvider
-import expensetracker.composeapp.generated.resources.Res
-import expensetracker.composeapp.generated.resources.compose_multiplatform
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
-/** Enum representing different screens in the app Useful for navigation management */
-enum class AppScreen {
-    HOME,
-    EXPENSE_HISTORY
+/** Enum representing different screens in the app with navigation management */
+enum class AppScreen(val title: String, val icon: ImageVector) {
+    DASHBOARD("Dashboard", Icons.Filled.Dashboard),
+    ADD("Add", Icons.Filled.Add),
+    HISTORY("History", Icons.Filled.History),
+    SETTINGS("Settings", Icons.Filled.Settings)
 }
 
 @Composable
@@ -35,56 +36,66 @@ fun App() {
 fun AppContent() {
     val appColors = LocalAppColors.current
     // Navigation state - controls which screen is shown
-    var currentScreen by remember { mutableStateOf(AppScreen.HOME) }
+    var currentScreen by remember { mutableStateOf(AppScreen.DASHBOARD) }
 
-    when (currentScreen) {
-        AppScreen.HOME ->
-                HomeScreen(
-                        onNavigateToExpenseHistory = { currentScreen = AppScreen.EXPENSE_HISTORY }
+    Scaffold(
+            containerColor = appColors.background,
+            bottomBar = {
+                BottomNavigationBar(
+                        currentScreen = currentScreen,
+                        onScreenSelected = { screen -> currentScreen = screen }
                 )
-        AppScreen.EXPENSE_HISTORY ->
-                ExpenseHistoryScreen(onNavigateBack = { currentScreen = AppScreen.HOME })
+            }
+    ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            when (currentScreen) {
+                AppScreen.DASHBOARD -> BlankScreen("Dashboard")
+                AppScreen.ADD -> BlankScreen("Add")
+                AppScreen.HISTORY -> ExpenseHistoryScreen()
+                AppScreen.SETTINGS -> BlankScreen("Settings")
+            }
+        }
     }
 }
 
-/** Home screen with navigation to Expense History */
+/** Bottom Navigation Bar */
 @Composable
-private fun HomeScreen(onNavigateToExpenseHistory: () -> Unit) {
+fun BottomNavigationBar(currentScreen: AppScreen, onScreenSelected: (AppScreen) -> Unit) {
     val appColors = LocalAppColors.current
-    var showContent by remember { mutableStateOf(false) }
 
-    Column(
-            modifier =
-                    Modifier.background(appColors.background)
-                            .safeContentPadding()
-                            .fillMaxSize()
-                            .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+    NavigationBar(
+            containerColor = appColors.card,
+            contentColor = appColors.foreground,
+            tonalElevation = 8.dp
     ) {
-        Text(
-                text = "Expense Tracker",
-                style = MaterialTheme.typography.headlineLarge,
-                color = appColors.foreground
-        )
-
-        // Navigation button to Expense History
-        Button(onClick = onNavigateToExpenseHistory, modifier = Modifier.fillMaxWidth()) {
-            Text("View Expense History")
+        AppScreen.entries.forEach { screen ->
+            NavigationBarItem(
+                    icon = { Icon(imageVector = screen.icon, contentDescription = screen.title) },
+                    label = { Text(screen.title) },
+                    selected = currentScreen == screen,
+                    onClick = { onScreenSelected(screen) },
+                    colors =
+                            NavigationBarItemDefaults.colors(
+                                    selectedIconColor = appColors.chart2,
+                                    selectedTextColor = appColors.chart2,
+                                    unselectedIconColor = appColors.mutedForeground,
+                                    unselectedTextColor = appColors.mutedForeground,
+                                    indicatorColor = appColors.secondary
+                            )
+            )
         }
+    }
+}
 
-        // Original demo content
-        Button(onClick = { showContent = !showContent }) { Text("Toggle Demo Content") }
+/** Blank screen placeholder for screens that don't have content yet */
+@Composable
+fun BlankScreen(@Suppress("UNUSED_PARAMETER") screenName: String) {
+    val appColors = LocalAppColors.current
 
-        AnimatedVisibility(showContent) {
-            val greeting = remember { Greeting().greet() }
-            Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Image(painterResource(Res.drawable.compose_multiplatform), null)
-                Text("Compose: $greeting", color = appColors.mutedForeground)
-            }
-        }
+    Box(
+            modifier = Modifier.fillMaxSize().background(appColors.background),
+            contentAlignment = Alignment.Center
+    ) {
+        // Empty screen - just background color
     }
 }
