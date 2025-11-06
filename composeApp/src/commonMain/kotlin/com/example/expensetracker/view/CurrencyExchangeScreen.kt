@@ -7,8 +7,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -35,6 +36,16 @@ fun CurrencyExchangeScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Navigation state for Currency Settings screen
+    var showCurrencySettingsScreen by remember { mutableStateOf(false) }
+    
+    // Show Currency Settings screen if requested
+    if (showCurrencySettingsScreen) {
+        CurrencySettingsScreen(
+            onNavigateBack = { showCurrencySettingsScreen = false }
+        )
+        return
+    }
     val appColors = LocalAppColors.current
     
     // Mock data - will be replaced with real ViewModel later
@@ -93,6 +104,15 @@ fun CurrencyExchangeScreen(
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
                             contentDescription = "Back",
+                            tint = appColors.foreground
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showCurrencySettingsScreen = true }) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "Currency Settings",
                             tint = appColors.foreground
                         )
                     }
@@ -325,11 +345,28 @@ fun CurrencyExchangeScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = appColors.mutedForeground
                         )
-                        Text(
-                            text = "• Configure API key in Settings",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = appColors.mutedForeground
-                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "• Configure API key in ",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = appColors.mutedForeground
+                            )
+                            TextButton(
+                                onClick = { showCurrencySettingsScreen = true },
+                                contentPadding = PaddingValues(0.dp),
+                                modifier = Modifier.height(20.dp)
+                            ) {
+                                Text(
+                                    text = "Settings",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = appColors.primary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
                     }
                 }
             }
