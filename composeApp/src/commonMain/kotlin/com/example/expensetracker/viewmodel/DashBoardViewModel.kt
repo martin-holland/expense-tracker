@@ -31,7 +31,7 @@ class DashBoardViewModel: ViewModel(){
     println("hello ${mockExpense}")
 
 
-        uiState = uiState.copy(expense = mockExpense)
+        uiState = uiState.copy(expenses = mockExpense)
     }
 
     private fun generateMockExpenses(): List<Expense> {
@@ -41,6 +41,8 @@ class DashBoardViewModel: ViewModel(){
         val oct30 = LocalDateTime(2024, 10, 30, 10, 15)
         val oct29 = LocalDateTime(2024, 10, 29, 16, 45)
         val oct28 = LocalDateTime(2024, 10, 28, 9, 0)
+
+//        val oct
 
         return listOf(
             Expense(
@@ -106,7 +108,8 @@ class DashBoardViewModel: ViewModel(){
                 amount = 180.00,
                 currency = Currency.USD,
                 date = oct28
-            )
+            ),
+
         )
     }
 
@@ -114,5 +117,5 @@ class DashBoardViewModel: ViewModel(){
 
 
 data class DashBoardUiState(
-    val expense: List<Expense> = emptyList()
+    val expenses: List<Expense> = emptyList()
 )

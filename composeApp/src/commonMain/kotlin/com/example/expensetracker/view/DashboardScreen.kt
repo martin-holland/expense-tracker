@@ -48,10 +48,14 @@ import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.expensetracker.model.Currency
+import com.example.expensetracker.model.Expense
 import com.example.expensetracker.model.ExpenseCategory
 import com.example.expensetracker.viewmodel.DashBoardViewModel
 import com.example.theme.com.example.expensetracker.LocalAppColors
 import expensetracker.composeapp.generated.resources.Res
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.isoDayNumber
 import network.chaintech.cmpcharts.axis.AxisData
 import network.chaintech.cmpcharts.axis.DataCategoryOptions
 import network.chaintech.cmpcharts.common.components.Legends
@@ -79,11 +83,11 @@ fun DashboardScreen(
     val appColors = LocalAppColors.current
     val uiState = viewModel.uiState
 
-    val totalSpent = uiState.expense.sumOf{it.amount}
+    val totalSpent = uiState.expenses.sumOf{it.amount}
     val chosenCurrenty = Currency.USD
     val currentMonth = "October 2025"
 
-    val categorySumMap = uiState.expense.groupBy { it.category }
+    val categorySumMap = uiState.expenses.groupBy { it.category }
         .mapValues { entry -> entry.value.sumOf { it.amount } }
         .toSortedMap(compareBy<ExpenseCategory> { it.displayName })
 
@@ -108,7 +112,7 @@ fun DashboardScreen(
 //            Text("This is pie chart")
 //            Text("This is graph chart")
 //            BarChartExample()
-            WeekBarCard()
+            WeekBarCard(uiState.expenses)
         }
     }
 }
@@ -342,9 +346,9 @@ private fun <K,V> Map<K,V>.toSortedMap(comparator:Comparator< in K>):Map<K,V>{
 
 
 @Composable
-fun BarChartExample() {
+fun BarChartExample(expenses: List<Expense>) {
     val maxRange = 50
-    val barData = getBarChartData(10, maxRange)
+    val barData = getBarChartData(10, maxRange,expenses)
     val yStepSize = 10
 
     val xAxisData = AxisData.Builder()
@@ -386,15 +390,16 @@ fun BarChartExample() {
     BarChart(modifier = Modifier.height(350.dp), barChartData = barChartData)
 }
 
-private fun getBarChartData(count: Int, maxRange: Int): List<BarData> {
+private fun getBarChartData(count: Int, maxRange: Int, expenses:List<Expense>): List<BarData> {
     val list = arrayListOf<BarData>()
     val DateOfWeek = listOf("Mon","Tue","Wed","Thu","Fri","Sat","Sun")
     for (index in 0 until DateOfWeek.size) {
+        val currentExpense = expenses[index]
         list.add(
             BarData(
                 point = network.chaintech.cmpcharts.common.model.Point(
                     x = index.toFloat(),
-                    y = (0..maxRange).random().toFloat()
+                    y = currentExpense.amount.toFloat()
                 ),
                 label = "${DateOfWeek[index]}",
                 color = Color(0xFF00BFAE)
@@ -404,8 +409,28 @@ private fun getBarChartData(count: Int, maxRange: Int): List<BarData> {
     return list
 }
 
+private fun getDateOfWeek(day: LocalDateTime): Int{
+    return day.dayOfWeek.isoDayNumber
+}
+
+private fun convertToDateOfWeek(day: LocalDateTime):String{
+    val dateNum = getDateOfWeek(day)
+    when (dateNum){
+        1 -> return "Mon"
+        2 -> return "Tue"
+        3 -> return "Wed"
+        4 -> return "Thu"
+        5 -> return "Fri"
+        6 -> return "Sat"
+        else -> return "Sun"
+    }
+}
+
+
 @Composable
-fun WeekBarCard(modifier: Modifier = Modifier){
+fun WeekBarCard(
+    expenses: List<Expense>,
+    modifier: Modifier = Modifier){
 
     Card (
 //        shape = RoundedCornerShape(12.dp),
@@ -422,7 +447,7 @@ fun WeekBarCard(modifier: Modifier = Modifier){
         Column(modifier = Modifier.padding(16.dp)) {
             Text("This Week", fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
-            BarChartExample()
+            BarChartExample(expenses)
         }
     }
 }
