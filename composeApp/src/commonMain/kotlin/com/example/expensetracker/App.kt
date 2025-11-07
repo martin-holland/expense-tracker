@@ -1,7 +1,5 @@
 package com.example.expensetracker
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -19,9 +17,6 @@ import com.example.expensetracker.view.DashboardScreen
 import com.example.expensetracker.view.ExpenseHistoryScreen
 import com.example.theme.com.example.expensetracker.LocalAppColors
 import com.example.theme.com.example.expensetracker.ThemeProvider
-import expensetracker.composeapp.generated.resources.Res
-import expensetracker.composeapp.generated.resources.compose_multiplatform
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 /** Enum representing different screens in the app with navigation management */
