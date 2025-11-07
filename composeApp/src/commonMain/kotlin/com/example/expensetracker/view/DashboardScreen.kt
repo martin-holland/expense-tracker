@@ -347,9 +347,9 @@ private fun <K,V> Map<K,V>.toSortedMap(comparator:Comparator< in K>):Map<K,V>{
 
 @Composable
 fun BarChartExample(expenses: List<Expense>) {
-    val maxRange = 50
+    val maxRange = 250.0// this must be Double, in order to be display corct in chart
     val barData = getBarChartData(10, maxRange,expenses)
-    val yStepSize = 10
+    val yStepSize = 5
 
     val xAxisData = AxisData.Builder()
         .axisStepSize(30.dp)
@@ -364,10 +364,11 @@ fun BarChartExample(expenses: List<Expense>) {
     val yAxisData = AxisData.Builder()
         .steps(yStepSize)
         .labelAndAxisLinePadding(20.dp)
-        .axisOffset(20.dp)
+        .axisOffset(10.dp)
         .axisLabelColor(Color.Black)
         .axisLineColor(Color.Black)
-        .labelData { index -> (index * (maxRange / yStepSize)).toString() }
+//        .labelData { index -> (index * (maxRange / yStepSize)).toString() }
+        .labelData { index -> (index * (maxRange/yStepSize)).toString() }
         .build()
     val barChartData = BarChartData(
         chartData = barData,
@@ -390,18 +391,26 @@ fun BarChartExample(expenses: List<Expense>) {
     BarChart(modifier = Modifier.height(350.dp), barChartData = barChartData)
 }
 
-private fun getBarChartData(count: Int, maxRange: Int, expenses:List<Expense>): List<BarData> {
+private fun getBarChartData(count: Int, maxRange: Double, expenses:List<Expense>): List<BarData> {
     val list = arrayListOf<BarData>()
     val DateOfWeek = listOf("Mon","Tue","Wed","Thu","Fri","Sat","Sun")
+
+    // Group expenses by day of week and sum them
+    val expensesByDay = expenses.groupBy { getDateOfWeek(it.date) }
+        .mapValues { entry -> entry.value.sumOf { it.amount } }
+
+    // Create bar data for each day of the week
     for (index in 0 until DateOfWeek.size) {
-        val currentExpense = expenses[index]
+        val dayOfWeekNum = index + 1 // Monday = 1, Sunday = 7
+        val totalForDay = expensesByDay[dayOfWeekNum] ?: 0.0
+
         list.add(
             BarData(
                 point = network.chaintech.cmpcharts.common.model.Point(
                     x = index.toFloat(),
-                    y = currentExpense.amount.toFloat()
+                    y = totalForDay.toFloat()
                 ),
-                label = "${DateOfWeek[index]}",
+                label = DateOfWeek[index],
                 color = Color(0xFF00BFAE)
             )
         )
