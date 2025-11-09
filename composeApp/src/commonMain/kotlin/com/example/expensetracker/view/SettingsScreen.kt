@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.expensetracker.model.Currency
+import com.example.expensetracker.model.ThemeOption
 import com.example.expensetracker.viewmodel.SettingsViewModel
 import com.example.theme.com.example.expensetracker.LocalAppColors
 
@@ -192,8 +193,8 @@ fun SettingsCardCurrency(
 
 @Composable
 fun SettingsCardAppearance(
-    selectedThemeOption: String,
-    onThemeOptionSelected: (String) -> Unit
+    selectedThemeOption: ThemeOption,
+    onThemeOptionSelected: (ThemeOption) -> Unit
 ) {
     val appColors = LocalAppColors.current
 
@@ -218,20 +219,20 @@ fun SettingsCardAppearance(
             ThemeOptionButton(
                 text = "Light",
                 icon = Icons.Filled.LightMode,
-                selected = selectedThemeOption == "Light",
-                onClick = { onThemeOptionSelected("Light") }
+                selected = selectedThemeOption == ThemeOption.LIGHT,
+                onClick = { onThemeOptionSelected(ThemeOption.LIGHT) }
             )
             ThemeOptionButton(
                 text = "Dark",
                 icon = Icons.Filled.DarkMode,
-                selected = selectedThemeOption == "Dark",
-                onClick = { onThemeOptionSelected("Dark") }
+                selected = selectedThemeOption == ThemeOption.DARK,
+                onClick = { onThemeOptionSelected(ThemeOption.DARK) }
             )
             ThemeOptionButton(
                 text = "System",
                 icon = Icons.Filled.Computer,
-                selected = selectedThemeOption == "System",
-                onClick = { onThemeOptionSelected("System") }
+                selected = selectedThemeOption == ThemeOption.SYSTEM,
+                onClick = { onThemeOptionSelected(ThemeOption.SYSTEM) }
             )
         }
     }

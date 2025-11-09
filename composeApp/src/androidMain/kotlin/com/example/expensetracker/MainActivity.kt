@@ -1,3 +1,4 @@
+// androidMain/MainActivity.kt
 package com.example.expensetracker
 
 import android.os.Bundle
@@ -6,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.theme.com.example.expensetracker.ThemeProvider
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -13,7 +15,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            App()
+            ThemeProvider {
+                AppContent()
+            }
         }
     }
 }
