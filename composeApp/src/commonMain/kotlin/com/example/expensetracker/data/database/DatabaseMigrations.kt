@@ -52,3 +52,56 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+/**
+ * Migration from version 2 to version 3
+ * Adds the exchange_rates table with indexes
+ */
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(database: SQLiteConnection) {
+        // Create exchange_rates table
+        val createTableSQL = """
+            CREATE TABLE IF NOT EXISTS exchange_rates (
+                id TEXT NOT NULL PRIMARY KEY,
+                baseCurrency TEXT NOT NULL,
+                targetCurrency TEXT NOT NULL,
+                rate REAL NOT NULL,
+                date TEXT NOT NULL,
+                lastUpdated TEXT NOT NULL
+            )
+        """.trimIndent()
+        
+        val createStatement = database.prepare(createTableSQL)
+        try {
+            createStatement.step()
+        } finally {
+            createStatement.close()
+        }
+        
+        // Create index on (baseCurrency, date)
+        val createIndex1SQL = """
+            CREATE INDEX IF NOT EXISTS idx_exchange_rates_base_date 
+            ON exchange_rates(baseCurrency, date)
+        """.trimIndent()
+        
+        val index1Statement = database.prepare(createIndex1SQL)
+        try {
+            index1Statement.step()
+        } finally {
+            index1Statement.close()
+        }
+        
+        // Create index on (baseCurrency, targetCurrency, date)
+        val createIndex2SQL = """
+            CREATE INDEX IF NOT EXISTS idx_exchange_rates_base_target_date 
+            ON exchange_rates(baseCurrency, targetCurrency, date)
+        """.trimIndent()
+        
+        val index2Statement = database.prepare(createIndex2SQL)
+        try {
+            index2Statement.step()
+        } finally {
+            index2Statement.close()
+        }
+    }
+}
+

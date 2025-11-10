@@ -356,13 +356,14 @@ This document provides a comprehensive specification for implementing currency e
 
 ---
 
-### Task 5: Exchange Rate API Integration
+### Task 5: Exchange Rate API Integration ✅ COMPLETED
 
 **Priority:** High  
 **Estimated Complexity:** Medium  
-**Dependencies:** Task 2
+**Dependencies:** Task 4  
+**Status:** ✅ All subtasks completed
 
-#### Subtask 3.1: Create Exchange Rate API Service
+#### Subtask 5.1: Create Exchange Rate API Service ✅
 
 - **File:** `commonMain/kotlin/com/example/expensetracker/data/network/ExchangeRateApiService.kt`
 - **Description:** Service interface and implementation for exchangerate-api.com
@@ -385,8 +386,9 @@ This document provides a comprehensive specification for implementing currency e
 - **Response Validation:**
   - Check `result == "success"` before using rates
   - Handle `error-type` field if present
+- **Status:** ✅ Completed - ExchangeRateApiService created with comprehensive error handling and Result-based API
 
-#### Subtask 3.2: Create Exchange Rate Entity
+#### Subtask 5.2: Create Exchange Rate Entity ✅
 
 - **File:** `commonMain/kotlin/com/example/expensetracker/data/database/ExchangeRateEntity.kt`
 - **Description:** Room entity for caching exchange rates
@@ -401,20 +403,25 @@ This document provides a comprehensive specification for implementing currency e
   - Add index on `(baseCurrency, date)` for fast lookups
   - Add index on `(baseCurrency, targetCurrency, date)` for specific rate queries
 - **Optimization Note:** Store all rates for a base currency in a single API call, then calculate cross-rates as needed
+- **Status:** ✅ Completed - ExchangeRateEntity created with indexes and ID generation helper methods
 
-#### Subtask 3.3: Create Exchange Rate DAO
+#### Subtask 5.3: Create Exchange Rate DAO ✅
 
 - **File:** `commonMain/kotlin/com/example/expensetracker/data/database/ExchangeRateDao.kt`
 - **Description:** Data Access Object for exchange rate cache
 - **Methods:**
   - `getRate(baseCurrency: String, targetCurrency: String, date: String?): suspend ExchangeRateEntity?` - Get specific rate
   - `getLatestRates(baseCurrency: String): Flow<List<ExchangeRateEntity>>` - Get all latest rates for base currency
+  - `getRatesByDate(baseCurrency: String, date: String): Flow<List<ExchangeRateEntity>>` - Get rates for specific date
   - `insertOrUpdateRate(rate: ExchangeRateEntity): suspend Unit` - Save/update rate
   - `insertOrUpdateRates(rates: List<ExchangeRateEntity>): suspend Unit` - Bulk insert
   - `deleteOldRates(olderThan: String): suspend Unit` - Cleanup old rates (older than 30 days)
   - `getRateCount(): suspend Int` - Count cached rates
+  - `deleteRatesForBaseCurrency(baseCurrency: String): suspend Unit` - Delete all rates for a base currency
+  - `getRatesSync(baseCurrency: String, date: String?): suspend List<ExchangeRateEntity>` - Synchronous rate retrieval
+- **Status:** ✅ Completed - ExchangeRateDao created with all required methods and additional helper methods
 
-#### Subtask 3.4: Update ExpenseDatabase for Exchange Rates
+#### Subtask 5.4: Update ExpenseDatabase for Exchange Rates ✅
 
 - **File:** `commonMain/kotlin/com/example/expensetracker/data/database/ExpenseDatabase.kt`
 - **Description:** Add ExchangeRateEntity to database
@@ -424,8 +431,9 @@ This document provides a comprehensive specification for implementing currency e
   - Add `exchangeRateDao(): ExchangeRateDao` abstract method
   - Create migration from version 2 to 3
 - **Migration:** Create `exchange_rates` table with indexes
+- **Status:** ✅ Completed - ExpenseDatabase updated to version 3, MIGRATION_2_3 created with table and indexes
 
-#### Subtask 3.5: Create Exchange Rate Repository
+#### Subtask 5.5: Create Exchange Rate Repository ✅
 
 - **File:** `commonMain/kotlin/com/example/expensetracker/data/repository/ExchangeRateRepository.kt`
 - **Description:** Repository for exchange rate management
@@ -446,6 +454,8 @@ This document provides a comprehensive specification for implementing currency e
   - If direct rate not found, calculate using base currency rates
   - Formula: `rate(A→B) = rate(base→B) / rate(base→A)`
   - Example: If we have USD→EUR and USD→GBP, calculate EUR→GBP = (USD→GBP) / (USD→EUR)
+  - Fallback: Try reverse rate lookup (invert if target→base rate exists)
+- **Status:** ✅ Completed - ExchangeRateRepository created with singleton pattern, cross-rate calculation, caching strategy, and automatic cleanup
 
 ---
 
@@ -820,7 +830,11 @@ This document provides a comprehensive specification for implementing currency e
    - ✅ Ktor dependencies added (core, content-negotiation, serialization, platform engines)
    - ✅ Ktor client factory created (expect/actual pattern for Android/iOS)
    - ✅ Exchange Rate API models created (ExchangeRateResponse, ErrorResponse)
-5. ⏳ Task 5: Exchange Rate API Integration - PENDING
+5. ✅ Task 5: Exchange Rate API Integration - COMPLETED
+   - ✅ ExchangeRateApiService created with error handling
+   - ✅ ExchangeRateEntity and ExchangeRateDao created
+   - ✅ ExpenseDatabase updated to version 3 with migration
+   - ✅ ExchangeRateRepository created with cross-rate calculation and caching
 6. ⏳ Task 6: Currency Conversion Service - PENDING
 
 ### Phase 3: Wire UI to Backend (Week 3) - PENDING
