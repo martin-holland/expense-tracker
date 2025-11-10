@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.example.expensetracker.view.DashboardScreen
 import com.example.expensetracker.view.ExpenseHistoryScreen
+import com.example.expensetracker.view.SettingsScreen
 import com.example.theme.com.example.expensetracker.LocalAppColors
 import com.example.theme.com.example.expensetracker.ThemeProvider
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -53,7 +54,7 @@ fun AppContent() {
                 AppScreen.DASHBOARD ->DashboardScreen()
                 AppScreen.ADD -> BlankScreen("Add")
                 AppScreen.HISTORY -> ExpenseHistoryScreen()
-                AppScreen.SETTINGS -> BlankScreen("Settings")
+                AppScreen.SETTINGS ->SettingsScreen()
             }
         }
     }
@@ -100,4 +101,3 @@ fun BlankScreen(@Suppress("UNUSED_PARAMETER") screenName: String) {
         // Empty screen - just background color
     }
 }
-

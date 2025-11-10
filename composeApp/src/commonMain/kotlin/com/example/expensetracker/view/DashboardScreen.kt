@@ -53,8 +53,8 @@ import com.example.theme.com.example.expensetracker.LocalAppColors
 import kotlin.text.category
 import kotlin.text.get
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Clock
 import kotlin.toString
-import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -405,6 +405,7 @@ private fun getBarChartData(
 }
 
 /** Gets the current date from the system clock */
+@OptIn(kotlin.time.ExperimentalTime::class)
 private fun getCurrentDate(): LocalDate {
     return Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 }
@@ -413,6 +414,7 @@ private fun getCurrentDate(): LocalDate {
  * Calculates the last 7 days including today Returns a list of LocalDate objects in chronological
  * order
  */
+@OptIn(kotlin.time.ExperimentalTime::class)
 private fun getLast7Days(): List<LocalDate> {
     val today = getCurrentDate()
     return (6 downTo 0).map { daysAgo ->
