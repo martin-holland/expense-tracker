@@ -1,3 +1,4 @@
+// androidMain/MainActivity.kt
 package com.example.expensetracker
 
 import android.os.Bundle
@@ -17,8 +18,8 @@ class MainActivity : ComponentActivity() {
 
 
         setContent {
-            ThemeProvider(useDarkTheme = false) {
-                 AppContent()
+            ThemeProvider {
+                AppContent()
             }
         }
     }
