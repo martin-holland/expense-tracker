@@ -99,3 +99,7 @@ room {
 // Note: Room KMP is in alpha and may have task dependency warnings
 // The implementation works correctly despite gradle validation warnings
 
+// Workaround for Room KMP task dependency issue
+tasks.matching { it.name.startsWith("ksp") && it.name != "kspCommonMainKotlinMetadata" }.configureEach {
+    mustRunAfter(tasks.named("kspCommonMainKotlinMetadata"))
+}
