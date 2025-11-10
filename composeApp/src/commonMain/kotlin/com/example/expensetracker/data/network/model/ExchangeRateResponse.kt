@@ -38,8 +38,8 @@ data class ExchangeRateResponse(
     val baseCode: String,
     
     /**
-     * Last update timestamp in UTC (ISO 8601 format)
-     * Example: "2024-11-01T12:00:00+00:00"
+     * Last update timestamp in UTC
+     * Example: "Mon, 10 Nov 2025 00:00:01 +0000"
      */
     @SerialName("time_last_update_utc")
     val timeLastUpdateUtc: String,
@@ -50,7 +50,26 @@ data class ExchangeRateResponse(
      * Example: If base is USD, EUR: 0.85 means 1 USD = 0.85 EUR
      */
     @SerialName("conversion_rates")
-    val conversionRates: Map<String, Double>
+    val conversionRates: Map<String, Double>,
+    
+    /**
+     * Optional fields that may be present in the API response
+     * These are ignored if not present due to default values
+     */
+    @SerialName("documentation")
+    val documentation: String? = null,
+    
+    @SerialName("terms_of_use")
+    val termsOfUse: String? = null,
+    
+    @SerialName("time_last_update_unix")
+    val timeLastUpdateUnix: Long? = null,
+    
+    @SerialName("time_next_update_unix")
+    val timeNextUpdateUnix: Long? = null,
+    
+    @SerialName("time_next_update_utc")
+    val timeNextUpdateUtc: String? = null
 ) {
     /**
      * Checks if the response indicates success

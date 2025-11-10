@@ -79,7 +79,16 @@ class ExchangeRateApiService(
             Result.success(responseBody)
             
         } catch (e: kotlinx.serialization.SerializationException) {
-            Result.failure(Exception("Failed to parse API response: Invalid JSON format", e))
+            // Log the actual serialization error for debugging
+            val errorDetails = buildString {
+                append("Serialization error: ${e.message}")
+                e.cause?.let { append("\nCause: ${it.message}") }
+                e.stackTrace.take(5).forEach { 
+                    append("\n  at ${it.className}.${it.methodName}(${it.fileName}:${it.lineNumber})")
+                }
+            }
+            println(errorDetails)
+            Result.failure(Exception("Failed to parse API response: Invalid JSON format. ${e.message}", e))
         } catch (e: io.ktor.client.network.sockets.ConnectTimeoutException) {
             Result.failure(Exception("Connection timeout: Unable to reach the API server", e))
         } catch (e: io.ktor.client.network.sockets.SocketTimeoutException) {

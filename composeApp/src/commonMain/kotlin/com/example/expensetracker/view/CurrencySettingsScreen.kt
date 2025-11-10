@@ -20,32 +20,40 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.expensetracker.model.Currency
+import com.example.expensetracker.viewmodel.SettingsViewModel
 import com.example.theme.com.example.expensetracker.LocalAppColors
 
 /**
  * Currency Settings Screen
  * 
  * Displays currency exchange settings including base currency, API configuration, and exchange rate management.
- * Initially uses mock data, will be wired to SettingsViewModel later.
+ * Uses SettingsViewModel for state management and data persistence.
  * 
  * @param onNavigateBack Callback when back button is clicked
+ * @param viewModel The SettingsViewModel instance (defaults to new instance)
  * @param modifier Modifier for layout customization
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CurrencySettingsScreen(
     onNavigateBack: () -> Unit,
+    viewModel: SettingsViewModel = remember { SettingsViewModel() },
     modifier: Modifier = Modifier
 ) {
     val appColors = LocalAppColors.current
     
-    // Mock state - will be replaced with ViewModel later
-    var selectedCurrency by remember { mutableStateOf(Currency.USD) }
+    // Observe ViewModel state
+    val baseCurrency by viewModel.baseCurrency.collectAsState()
+    val apiKey by viewModel.apiKey.collectAsState()
+    val apiBaseUrl by viewModel.apiBaseUrl.collectAsState()
+    val isApiConfigured by viewModel.isApiConfigured.collectAsState()
+    val lastUpdateTime by viewModel.lastExchangeRateUpdate.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+    val apiTestResult by viewModel.apiTestResult.collectAsState()
+    
+    // Local UI state
     var currencyExpanded by remember { mutableStateOf(false) }
-    var apiKey by remember { mutableStateOf("") }
-    var apiBaseUrl by remember { mutableStateOf("https://v6.exchangerate-api.com/v6") }
-    var isApiConfigured by remember { mutableStateOf(false) }
-    var lastUpdateTime by remember { mutableStateOf<String?>(null) }
     var showApiKey by remember { mutableStateOf(false) }
     
     Scaffold(
@@ -113,7 +121,7 @@ fun CurrencySettingsScreen(
                         onExpandedChange = { currencyExpanded = it }
                     ) {
                         OutlinedTextField(
-                            value = "${selectedCurrency.symbol} ${selectedCurrency.displayName} (${selectedCurrency.code})",
+                            value = "${baseCurrency.symbol} ${baseCurrency.displayName} (${baseCurrency.code})",
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("Select Base Currency") },
@@ -123,6 +131,7 @@ fun CurrencySettingsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                            enabled = !isLoading,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = appColors.foreground,
                                 unfocusedTextColor = appColors.foreground,
@@ -136,7 +145,7 @@ fun CurrencySettingsScreen(
                             onDismissRequest = { currencyExpanded = false },
                             modifier = Modifier.heightIn(max = 300.dp)
                         ) {
-                            Currency.entries.forEach { currency ->
+                            viewModel.availableCurrencies.forEach { currency ->
                                 DropdownMenuItem(
                                     text = {
                                         Row(
@@ -162,10 +171,10 @@ fun CurrencySettingsScreen(
                                         }
                                     },
                                     onClick = {
-                                        selectedCurrency = currency
+                                        viewModel.updateBaseCurrency(currency)
                                         currencyExpanded = false
                                     },
-                                    leadingIcon = if (currency == selectedCurrency) {
+                                    leadingIcon = if (currency == baseCurrency) {
                                         {
                                             Icon(
                                                 imageVector = Icons.Filled.CheckCircle,
@@ -235,12 +244,13 @@ fun CurrencySettingsScreen(
                     // API Key input
                     OutlinedTextField(
                         value = apiKey,
-                        onValueChange = { apiKey = it },
+                        onValueChange = { viewModel.updateApiKey(it) },
                         label = { Text("API Key") },
                         placeholder = { Text("Enter your API key") },
                         visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                         modifier = Modifier.fillMaxWidth(),
+                        enabled = !isLoading,
                         trailingIcon = {
                             IconButton(onClick = { showApiKey = !showApiKey }) {
                                 Text(
@@ -261,11 +271,12 @@ fun CurrencySettingsScreen(
                     // API Base URL input
                     OutlinedTextField(
                         value = apiBaseUrl,
-                        onValueChange = { apiBaseUrl = it },
+                        onValueChange = { viewModel.updateApiBaseUrl(it) },
                         label = { Text("API Base URL") },
                         placeholder = { Text("https://v6.exchangerate-api.com/v6") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                         modifier = Modifier.fillMaxWidth(),
+                        enabled = !isLoading,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = appColors.foreground,
                             unfocusedTextColor = appColors.foreground,
@@ -274,18 +285,45 @@ fun CurrencySettingsScreen(
                         )
                     )
                     
+                    // API Test Result
+                    apiTestResult?.let { result ->
+                        val isSuccess = result.startsWith("Success:")
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSuccess) 
+                                    appColors.primary.copy(alpha = 0.1f) 
+                                else 
+                                    MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+                            )
+                        ) {
+                            Text(
+                                text = result,
+                                modifier = Modifier.padding(12.dp),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (isSuccess) appColors.primary else MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                    
                     // Test API Connection button
                     Button(
-                        onClick = {
-                            // Mock implementation: Log for now
-                            println("Test API connection clicked - will test connection later")
-                        },
+                        onClick = { viewModel.testApiConnection() },
                         modifier = Modifier.fillMaxWidth(),
+                        enabled = !isLoading,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = appColors.primary,
                             contentColor = appColors.primaryForeground
                         )
                     ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = appColors.primaryForeground,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
                         Text("Test API Connection")
                     }
                 }
@@ -331,16 +369,22 @@ fun CurrencySettingsScreen(
                     }
                     
                     Button(
-                        onClick = {
-                            // Mock implementation: Log for now
-                            println("Refresh rates clicked - will refresh from API later")
-                        },
+                        onClick = { viewModel.refreshExchangeRates() },
                         modifier = Modifier.fillMaxWidth(),
+                        enabled = !isLoading && isApiConfigured,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = appColors.primary,
                             contentColor = appColors.primaryForeground
                         )
                     ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = appColors.primaryForeground,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
                         Icon(
                             imageVector = Icons.Filled.Refresh,
                             contentDescription = null,
@@ -355,6 +399,37 @@ fun CurrencySettingsScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = appColors.mutedForeground
                     )
+                }
+            }
+            
+            // Error Message Display
+            errorMessage?.let { error ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = error,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             }
             
