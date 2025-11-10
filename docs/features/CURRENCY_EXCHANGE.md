@@ -196,13 +196,14 @@ This document provides a comprehensive specification for implementing currency e
 
 ---
 
-### Task 3: Settings Storage Infrastructure
+### Task 3: Settings Storage Infrastructure ✅ COMPLETED
 
 **Priority:** High  
 **Estimated Complexity:** Medium  
-**Dependencies:** None
+**Dependencies:** None  
+**Status:** ✅ All subtasks completed
 
-#### Subtask 1.1: Create Settings Data Model
+#### Subtask 1.1: Create Settings Data Model ✅
 
 - **File:** `commonMain/kotlin/com/example/expensetracker/model/AppSettings.kt`
 - **Description:** Create data class to represent app settings
@@ -217,8 +218,9 @@ This document provides a comprehensive specification for implementing currency e
   - Use `kotlinx.datetime.LocalDateTime` for consistency
   - API key should be stored securely (consider encryption for production)
   - API base URL allows switching providers if needed
+- **Status:** ✅ Completed - AppSettings data class created with all required fields and helper method
 
-#### Subtask 1.2: Create Settings Entity for Database
+#### Subtask 1.2: Create Settings Entity for Database ✅
 
 - **File:** `commonMain/kotlin/com/example/expensetracker/data/database/SettingsEntity.kt`
 - **Description:** Room entity for storing settings
@@ -233,8 +235,9 @@ This document provides a comprehensive specification for implementing currency e
 - **Note:** Refresh interval is fixed at 24 hours - not stored in database
 - **Type Converters:** Reuse existing `Converters` class for Currency and LocalDateTime
 - **Security Note:** API key is stored in plain text in database. For production, consider encryption.
+- **Status:** ✅ Completed - SettingsEntity created with extension functions for conversion
 
-#### Subtask 1.3: Create Settings DAO
+#### Subtask 1.3: Create Settings DAO ✅
 
 - **File:** `commonMain/kotlin/com/example/expensetracker/data/database/SettingsDao.kt`
 - **Description:** Data Access Object for settings operations
@@ -247,8 +250,9 @@ This document provides a comprehensive specification for implementing currency e
   - `updateApiKey(apiKey: String): suspend Unit` - Update API key
   - `updateApiBaseUrl(baseUrl: String): suspend Unit` - Update API base URL
 - **Note:** Refresh interval is fixed at 24 hours (not stored or configurable)
+- **Status:** ✅ Completed - SettingsDao created with all required methods
 
-#### Subtask 1.4: Update ExpenseDatabase
+#### Subtask 1.4: Update ExpenseDatabase ✅
 
 - **File:** `commonMain/kotlin/com/example/expensetracker/data/database/ExpenseDatabase.kt`
 - **Description:** Add SettingsEntity to database
@@ -261,8 +265,9 @@ This document provides a comprehensive specification for implementing currency e
   - Create new `settings` table
   - Insert default settings row (baseCurrency = "USD")
   - See [database/IMPLEMENTATION.md](../database/IMPLEMENTATION.md) for migration pattern
+- **Status:** ✅ Completed - ExpenseDatabase updated to version 2, SettingsEntity added, migration created (MIGRATION_1_2 using SQLiteConnection API for Room KMP)
 
-#### Subtask 1.5: Create Settings Repository
+#### Subtask 1.5: Create Settings Repository ✅
 
 - **File:** `commonMain/kotlin/com/example/expensetracker/data/repository/SettingsRepository.kt`
 - **Description:** Repository for settings management (singleton pattern, similar to ExpenseRepository)
@@ -282,16 +287,18 @@ This document provides a comprehensive specification for implementing currency e
   - `isApiConfigured(): suspend Boolean` - Check if API key is set
 - **Pattern:** Follow ExpenseRepository singleton pattern
 - **Initialization:** Default base currency = USD, default API URL = "https://v6.exchangerate-api.com/v6" if no settings exist
+- **Status:** ✅ Completed - SettingsRepository created with all required methods, singleton pattern, auto-initialization of default settings
 
 ---
 
-### Task 4: HTTP Client Setup (Ktor)
+### Task 4: HTTP Client Setup (Ktor) ✅ COMPLETED
 
 **Priority:** High  
 **Estimated Complexity:** Medium  
-**Dependencies:** None
+**Dependencies:** None  
+**Status:** ✅ All subtasks completed
 
-#### Subtask 2.1: Add Ktor Dependencies
+#### Subtask 4.1: Add Ktor Dependencies ✅
 
 - **File:** `gradle/libs.versions.toml`
 - **Description:** Add Ktor client dependencies for KMP
@@ -306,15 +313,16 @@ This document provides a comprehensive specification for implementing currency e
   - Android: `ktor-client-android`
   - iOS: `ktor-client-darwin`
 - **Note:** Use Ktor 3.0.0+ for best KMP support
+- **Status:** ✅ Completed - All Ktor dependencies added to libs.versions.toml and build.gradle.kts
 
-#### Subtask 2.2: Create Ktor Client Factory
+#### Subtask 4.2: Create Ktor Client Factory ✅
 
 - **File:** `commonMain/kotlin/com/example/expensetracker/data/network/KtorClientFactory.kt`
 - **Description:** Factory for creating platform-specific Ktor clients
 - **Pattern:** Use `expect/actual` pattern for platform-specific engines
 - **Common Interface:**
   ```kotlin
-  expect fun createHttpClient(): HttpClient
+  expect fun createHttpClient(timeoutSeconds: Long = 30): HttpClient
   ```
 - **Android Implementation:**
   - File: `androidMain/kotlin/com/example/expensetracker/data/network/KtorClientFactory.android.kt`
@@ -323,27 +331,28 @@ This document provides a comprehensive specification for implementing currency e
   - File: `iosMain/kotlin/com/example/expensetracker/data/network/KtorClientFactory.ios.kt`
   - Use `Darwin` engine
 - **Configuration:**
-  - JSON content negotiation
-  - Timeout: 30 seconds
-  - Base URL: Configurable (default: `https://v6.exchangerate-api.com/v6`)
-  - Base URL should be injected from SettingsRepository
+  - JSON content negotiation with lenient parsing
+  - Timeout: 30 seconds (configurable)
+  - Base URL: Will be set when making requests (from SettingsRepository)
+- **Status:** ✅ Completed - Ktor client factory created with expect/actual pattern, JSON serialization, and timeout configuration
 
-#### Subtask 2.3: Create Exchange Rate API Models
+#### Subtask 4.3: Create Exchange Rate API Models ✅
 
 - **File:** `commonMain/kotlin/com/example/expensetracker/data/network/model/ExchangeRateResponse.kt`
 - **Description:** Data classes for API responses from exchangerate-api.com
 - **Models:**
   - `ExchangeRateResponse` - Main response from exchangerate-api.com
     - `result: String` - "success" or error code
-    - `base_code: String` - Base currency code
+    - `base_code: String` - Base currency code (mapped via @SerialName)
     - `time_last_update_utc: String` - Last update timestamp (ISO format)
     - `conversion_rates: Map<String, Double>` - Currency code to rate mapping (all rates relative to base)
-  - `ErrorResponse` - Error response structure (optional)
+  - `ErrorResponse` - Error response structure
     - `result: String` - Error code
-    - `error-type: String` - Error type description
-- **Serialization:** Use `@Serializable` from kotlinx-serialization
-- **Property Names:** Use `@SerialName` to map JSON field names (e.g., `base_code`, `conversion_rates`)
+    - `error-type: String` - Error type description (mapped via @SerialName)
+- **Serialization:** Uses `@Serializable` from kotlinx-serialization
+- **Property Names:** Uses `@SerialName` to map JSON field names (e.g., `base_code`, `conversion_rates`, `error-type`)
 - **API Reference:** https://www.exchangerate-api.com/docs/standard-requests
+- **Status:** ✅ Completed - ExchangeRateResponse and ErrorResponse models created with proper serialization annotations
 
 ---
 
@@ -800,10 +809,17 @@ This document provides a comprehensive specification for implementing currency e
    - ✅ Update App Navigation (Settings accessible from CurrencyExchangeScreen)
    - ✅ Settings icon restored in bottom nav (shows BlankScreen)
 
-### Phase 2: Backend Infrastructure (Week 2) - PENDING
+### Phase 2: Backend Infrastructure (Week 2) - IN PROGRESS
 
-3. ⏳ Task 3: Settings Storage Infrastructure - PENDING
-4. ⏳ Task 4: HTTP Client Setup (Ktor) - PENDING
+3. ✅ Task 3: Settings Storage Infrastructure - COMPLETED
+   - ✅ AppSettings data model created
+   - ✅ SettingsEntity and SettingsDao created
+   - ✅ ExpenseDatabase updated to version 2 with migration
+   - ✅ SettingsRepository created with all required methods
+4. ✅ Task 4: HTTP Client Setup (Ktor) - COMPLETED
+   - ✅ Ktor dependencies added (core, content-negotiation, serialization, platform engines)
+   - ✅ Ktor client factory created (expect/actual pattern for Android/iOS)
+   - ✅ Exchange Rate API models created (ExchangeRateResponse, ErrorResponse)
 5. ⏳ Task 5: Exchange Rate API Integration - PENDING
 6. ⏳ Task 6: Currency Conversion Service - PENDING
 

@@ -70,11 +70,55 @@ class SettingsRepository private constructor(
     }
     
     /**
+     * Gets the base currency synchronously (for one-time reads)
+     * @return The current base currency, or USD if not found
+     */
+    suspend fun getBaseCurrencySync(): Currency {
+        return getSettingsSync().baseCurrency
+    }
+    
+    /**
+     * Gets the last exchange rate update timestamp as a Flow
+     * The Flow will emit updates whenever the timestamp changes
+     */
+    fun getLastExchangeRateUpdate(): Flow<kotlinx.datetime.LocalDateTime?> {
+        return settingsDao.getSettings().map { entity ->
+            entity?.toAppSettings()?.lastExchangeRateUpdate
+        }
+    }
+    
+    /**
+     * Updates the last exchange rate update timestamp
+     * @param timestamp The timestamp to set
+     */
+    suspend fun updateLastExchangeRateUpdate(timestamp: kotlinx.datetime.LocalDateTime) {
+        settingsDao.updateLastExchangeRateUpdate(timestamp.toString())
+    }
+    
+    /**
      * Updates the last exchange rate update timestamp to now
      */
     suspend fun updateLastExchangeRateUpdate() {
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-        settingsDao.updateLastExchangeRateUpdate(now.toString())
+        updateLastExchangeRateUpdate(now)
+    }
+    
+    /**
+     * Gets the API key as a Flow
+     * The Flow will emit updates whenever the API key changes
+     */
+    fun getApiKey(): Flow<String> {
+        return settingsDao.getSettings().map { entity ->
+            entity?.toAppSettings()?.exchangeRateApiKey ?: ""
+        }
+    }
+    
+    /**
+     * Gets the API key synchronously (for one-time reads)
+     * @return The current API key, or empty string if not found
+     */
+    suspend fun getApiKeySync(): String {
+        return getSettingsSync().exchangeRateApiKey
     }
     
     /**
@@ -86,11 +130,61 @@ class SettingsRepository private constructor(
     }
     
     /**
+     * Sets the API key (alias for updateApiKey for consistency with spec)
+     * @param apiKey The API key to set
+     */
+    suspend fun setApiKey(apiKey: String) {
+        updateApiKey(apiKey)
+    }
+    
+    /**
+     * Gets the API base URL as a Flow
+     * The Flow will emit updates whenever the API base URL changes
+     */
+    fun getApiBaseUrl(): Flow<String> {
+        return settingsDao.getSettings().map { entity ->
+            entity?.toAppSettings()?.exchangeRateApiBaseUrl ?: "https://v6.exchangerate-api.com/v6"
+        }
+    }
+    
+    /**
+     * Gets the API base URL synchronously (for one-time reads)
+     * @return The current API base URL, or default URL if not found
+     */
+    suspend fun getApiBaseUrlSync(): String {
+        return getSettingsSync().exchangeRateApiBaseUrl
+    }
+    
+    /**
      * Updates the API base URL
      * @param baseUrl The API base URL to set
      */
     suspend fun updateApiBaseUrl(baseUrl: String) {
         settingsDao.updateApiBaseUrl(baseUrl)
+    }
+    
+    /**
+     * Sets the API base URL (alias for updateApiBaseUrl for consistency with spec)
+     * @param baseUrl The API base URL to set
+     */
+    suspend fun setApiBaseUrl(baseUrl: String) {
+        updateApiBaseUrl(baseUrl)
+    }
+    
+    /**
+     * Checks if the API is configured (API key is set)
+     * @return true if API key is not empty, false otherwise
+     */
+    suspend fun isApiConfigured(): Boolean {
+        return getApiKeySync().isNotBlank()
+    }
+    
+    /**
+     * Sets the base currency (alias for updateBaseCurrency for consistency with spec)
+     * @param currency The currency to set as base currency
+     */
+    suspend fun setBaseCurrency(currency: Currency) {
+        updateBaseCurrency(currency)
     }
     
     /**

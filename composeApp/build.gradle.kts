@@ -35,6 +35,7 @@ kotlin {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
+            implementation(libs.ktor.client.android)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -49,10 +50,24 @@ kotlin {
             implementation(libs.kotlinx.datetime)
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.sqlite.bundled)
+            implementation(libs.kotlinx.serialization.json)
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
             implementation("network.chaintech:cmpcharts:1.0.0")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+        }
+        val iosArm64Main by getting {
+            dependencies {
+                implementation(libs.ktor.client.darwin)
+            }
+        }
+        val iosSimulatorArm64Main by getting {
+            dependencies {
+                implementation(libs.ktor.client.darwin)
+            }
         }
     }
 }
