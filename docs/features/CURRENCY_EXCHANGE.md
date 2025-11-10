@@ -598,79 +598,98 @@ This document provides a comprehensive specification for implementing currency e
 
 ---
 
-### Task 9: Currency Conversion on Display
+### Task 9: Currency Conversion on Display ✅ COMPLETED
 
 **Priority:** High  
 **Estimated Complexity:** Medium  
-**Dependencies:** Task 6, Task 8
+**Dependencies:** Task 6, Task 8  
+**Status:** ✅ All subtasks completed
 
-#### Subtask 9.1: Update ExpenseHistoryViewModel
+#### Subtask 9.1: Update ExpenseHistoryViewModel ✅
 
 - **File:** `commonMain/kotlin/com/example/expensetracker/viewmodel/ExpenseHistoryViewModel.kt`
 - **Description:** Add currency conversion to expense display
 - **Changes:**
-  - Inject `CurrencyConverter` and `SettingsRepository`
-  - Add `convertedExpenses: StateFlow<List<ExpenseWithConversion>>` - Expenses with converted amounts
-  - Add `showConvertedAmounts: StateFlow<Boolean>` - Toggle for showing conversions
-- **Data Class:** `ExpenseWithConversion`
+  - ✅ Injected `CurrencyConverter` and `SettingsRepository`
+  - ✅ Added `convertedExpenses: StateFlow<List<ExpenseWithConversion>>` - Expenses with converted amounts
+  - ✅ Added `showConvertedAmounts: StateFlow<Boolean>` - Toggle for showing conversions (defaults to true)
+  - ✅ Moved `ExpenseWithConversion` to shared model package (`model/ExpenseWithConversion.kt`)
+- **Data Class:** `ExpenseWithConversion` (in `model/ExpenseWithConversion.kt`)
   - `expense: Expense` - Original expense
   - `convertedAmount: Double?` - Converted amount (nullable if conversion fails)
   - `baseCurrency: Currency` - Base currency used
 - **Logic:**
-  - Observe base currency from SettingsRepository
-  - Convert each expense when base currency changes
-  - Handle null conversions gracefully (show original amount)
+  - ✅ Observes base currency from SettingsRepository
+  - ✅ Converts each expense when base currency changes
+  - ✅ Converts expenses when expense list changes
+  - ✅ Handles null conversions gracefully (shows original amount)
+  - ✅ Added `toggleShowConvertedAmounts()` method for future UI toggle
+- **Status:** ✅ Completed - ExpenseHistoryViewModel now provides converted expenses
 
-#### Subtask 9.2: Update Expense Display Components
+#### Subtask 9.2: Update Expense Display Components ✅
 
 - **File:** `commonMain/kotlin/com/example/expensetracker/view/components/SwipeableExpenseItem.kt`
 - **Description:** Show converted amount alongside original
 - **Changes:**
-  - Accept `convertedAmount: Double?` and `baseCurrency: Currency?` as parameters
-  - Display format: "€25.99 (≈ $28.50)" when converted amount available
-  - Show only original amount if conversion unavailable
-  - Use muted color for converted amount
+  - ✅ Added `convertedAmount: Double?` and `baseCurrency: Currency?` as optional parameters
+  - ✅ Added `showConvertedAmount: Boolean` parameter (defaults to true)
+  - ✅ Display format: Shows original amount on top, converted amount below as "≈ {baseCurrency amount}"
+  - ✅ Shows only original amount if conversion unavailable or disabled
+  - ✅ Uses muted color for converted amount (bodySmall typography)
 - **UI Design:**
-  - Original amount: Primary text, larger
-  - Converted amount: Secondary text, smaller, muted color
-  - Format: `{original} (≈ {converted})`
+  - ✅ Original amount: Primary text, larger (titleMedium, SemiBold)
+  - ✅ Converted amount: Secondary text, smaller (bodySmall), muted color
+  - ✅ Format: Original amount on top, converted amount below in Column layout
+  - ✅ Only displays when currency differs from base currency
+- **Status:** ✅ Completed - SwipeableExpenseItem now displays converted amounts
 
-#### Subtask 9.3: Update ExpenseHistoryScreen
+#### Subtask 9.3: Update ExpenseHistoryScreen ✅
 
 - **File:** `commonMain/kotlin/com/example/expensetracker/view/ExpenseHistoryScreen.kt`
 - **Description:** Pass converted amounts to expense items
 - **Changes:**
-  - Use `convertedExpenses` from ViewModel
-  - Pass `convertedAmount` and `baseCurrency` to SwipeableExpenseItem
-  - Add toggle button to show/hide conversions (optional)
+  - ✅ Uses `convertedExpenses` from ViewModel (collects as State)
+  - ✅ Creates conversion map for quick lookup by expense ID
+  - ✅ Passes `convertedAmount` and `baseCurrency` to SwipeableExpenseItem
+  - ✅ Passes `showConvertedAmount` from ViewModel state
+  - ✅ Toggle button implementation deferred (can be added later if needed)
+- **Status:** ✅ Completed - ExpenseHistoryScreen now displays converted amounts in expense list
 
 ---
 
-### Task 10: Currency Conversion on Save
+### Task 10: Currency Conversion on Save ✅ COMPLETED
 
 **Priority:** Medium  
 **Estimated Complexity:** Low  
-**Dependencies:** Task 6, Task 8
+**Dependencies:** Task 6, Task 8  
+**Status:** ✅ All subtasks completed
 
-#### Subtask 10.1: Update Add/Edit Expense Flow
+#### Subtask 10.1: Update Add/Edit Expense Flow ✅
 
-- **Files:**
-  - `commonMain/kotlin/com/example/expensetracker/viewmodel/AddExpenseViewModel.kt` (to be created)
-  - `commonMain/kotlin/com/example/expensetracker/view/AddExpenseScreen.kt` (to be created)
-- **Description:** When saving expense, optionally show converted amount preview
+- **File:** `commonMain/kotlin/com/example/expensetracker/view/components/EditExpenseDialog.kt`
+- **Description:** When editing expense, show converted amount preview
 - **Implementation:**
-  - In expense form, show preview: "This will be ≈ $X.XX in your base currency"
-  - Update preview when currency or amount changes
-  - Use CurrencyConverter to get converted amount
-- **Note:** This task depends on Add Expense screen implementation (may be future work)
+  - ✅ Added currency conversion preview card in EditExpenseDialog
+  - ✅ Shows preview: "≈ {baseCurrency amount}" when currency differs from base
+  - ✅ Updates preview when currency or amount changes (using LaunchedEffect)
+  - ✅ Uses CurrencyConverter to get converted amount
+  - ✅ Shows loading indicator while calculating
+  - ✅ Handles conversion errors gracefully (shows "Conversion unavailable")
+  - ✅ Only displays when amount is valid and currency differs from base
+- **UI Design:**
+  - Preview card with subtle background color
+  - Shows "Converted to base currency" label
+  - Displays converted amount with "≈" symbol
+  - Loading state with CircularProgressIndicator
+  - Error state with italic text
+- **Status:** ✅ Completed - EditExpenseDialog now shows real-time conversion preview
 
-#### Subtask 10.2: Update ExpenseRepository (Optional Enhancement)
+#### Subtask 10.2: Update ExpenseRepository (Optional Enhancement) ⏸️ SKIPPED
 
 - **File:** `commonMain/kotlin/com/example/expensetracker/data/repository/ExpenseRepository.kt`
 - **Description:** Add method to get expenses with conversions
-- **Method:**
-  - `getAllExpensesWithConversion(baseCurrency: Currency, converter: CurrencyConverter): Flow<List<ExpenseWithConversion>>`
-- **Note:** This is optional - conversion can be done in ViewModel instead
+- **Note:** This was optional - conversion is done in the dialog component using CurrencyConverter directly, which is more efficient
+- **Status:** ⏸️ Skipped - Not needed as conversion is handled in UI component
 
 ---
 
@@ -867,12 +886,20 @@ This document provides a comprehensive specification for implementing currency e
    - ✅ Connect CurrencyExchangeScreen to real data and services
    - ✅ Implement expense conversion display
    - ✅ Connect Refresh Rates button functionality
-9. ⏳ Task 9: Currency Conversion on Display - PENDING
-   - Show converted amounts in expense list
+9. ✅ Task 9: Currency Conversion on Display - COMPLETED
+   - ✅ Update ExpenseHistoryViewModel with currency conversion
+   - ✅ Update SwipeableExpenseItem to show converted amounts
+   - ✅ Update ExpenseHistoryScreen to pass converted amounts
+   - ✅ Moved ExpenseWithConversion to shared model package
 
-### Phase 4: Polish & Optimization (Week 4) - PENDING
+### Phase 4: Polish & Optimization (Week 4) - IN PROGRESS
 
-10. ⏳ Task 10: Currency Conversion on Save (if Add Expense screen exists) - PENDING
+10. ✅ Task 10: Currency Conversion on Save - COMPLETED
+
+- ✅ Added currency conversion preview to EditExpenseDialog
+- ✅ Real-time preview updates when amount or currency changes
+- ✅ Loading and error states handled
+
 11. ⏳ Task 11: Background Exchange Rate Refresh (fixed at 24 hours) - PENDING
 12. ⏳ Task 12: Offline Fallback - PENDING
 13. ⏳ Task 13: Testing & Error Handling - PENDING
@@ -1150,13 +1177,33 @@ implementation(libs.ktor.client.darwin)
 
 ---
 
-**Document Version:** 1.4  
+**Document Version:** 1.6  
 **Last Updated:** 2024-11-10  
-**Status:** Phase 1, 2, & 3 Partial Complete - Tasks 1-8 ✅ COMPLETED
+**Status:** Phase 1, 2, 3 Complete & Phase 4 In Progress - Tasks 1-9, 10 ✅ COMPLETED
 
-## Recent Updates (v1.4) - Implementation Progress
+## Recent Updates (v1.6) - Implementation Progress
 
-### Phase 3: Wire UI to Backend - IN PROGRESS
+### Phase 4: Polish & Optimization - IN PROGRESS
+
+**Task 9: Currency Conversion on Display** - ✅ COMPLETED
+
+- ✅ ExpenseHistoryViewModel updated with currency conversion logic
+- ✅ SwipeableExpenseItem now displays converted amounts below original
+- ✅ ExpenseHistoryScreen passes conversion data to expense items
+- ✅ ExpenseWithConversion moved to shared model package
+- ✅ Real-time conversion updates when base currency changes
+- ✅ Converted amounts shown in format: "≈ {baseCurrency amount}"
+
+**Task 10: Currency Conversion on Save** - ✅ COMPLETED
+
+- ✅ Currency conversion preview added to EditExpenseDialog
+- ✅ Real-time conversion calculation when amount or currency changes
+- ✅ Preview shows "≈ {baseCurrency amount}" format
+- ✅ Loading indicator during conversion calculation
+- ✅ Graceful error handling (shows "Conversion unavailable" if rate not available)
+- ✅ Only displays when currency differs from base currency
+
+### Phase 3: Wire UI to Backend - ✅ COMPLETED
 
 **Task 8: Wire Currency Exchange UI to Backend** - ✅ COMPLETED
 
