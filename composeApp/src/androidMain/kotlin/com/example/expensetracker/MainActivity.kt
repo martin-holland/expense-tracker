@@ -15,19 +15,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.example.expensetracker.services.initializeNapier
 import com.example.theme.com.example.expensetracker.ThemeProvider
+import io.github.aakira.napier.Napier
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        //create a logger instance
-//        AndroidLogcatLogger.installOnDebuggableApp(this, minPriority = VERBOSE)
+
+        initializeNapier()
+        Napier.d("App initialized", tag = "DDD")
 
         requestNecessaryPermissions()
-
+//
         initializeCamera()
+
 
 
         setContent {
@@ -52,6 +56,7 @@ class MainActivity : ComponentActivity() {
         }
 
     private fun requestNecessaryPermissions() {
+        Napier.d("Checking permission", tag = "DDD")
         // Only request permissions on Android 6.0 (API 23) and above
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val permissionsToRequest = mutableListOf<String>()
@@ -74,7 +79,7 @@ class MainActivity : ComponentActivity() {
             if (permissionsToRequest.isNotEmpty()) {
                 permissionLauncher.launch(permissionsToRequest.toTypedArray())
             } else {
-                println("✅ All permissions already granted")
+                Napier.d("All permission granted",tag="DDD")
             }
         }
     }
@@ -88,7 +93,7 @@ class MainActivity : ComponentActivity() {
     private fun initializeCamera() {
         try {
 //            val cameraService = AndroidCameraService.getInstance(this)
-            print("start Camera service")
+            Napier.d("Camera initialize", tag = "DDD")
             // Start camera in coroutine
 //            lifecycleScope.launch { cameraService.startCamera(this@MainActivity) }
         } catch (e: Exception) {

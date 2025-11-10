@@ -27,6 +27,7 @@ kotlin {
     }
 
     val cameraxVersion = "1.6.0-alpha01"
+    val napierVersion = "2.7.1"
 
 
     sourceSets {
@@ -53,6 +54,9 @@ kotlin {
             implementation(compose.materialIconsExtended)
             implementation(libs.kotlinx.datetime)
             implementation("network.chaintech:cmpcharts:1.0.0")
+
+            //log
+            implementation("io.github.aakira:napier:${napierVersion}")
 
 
 
