@@ -1,3 +1,4 @@
+// androidMain/MainActivity.kt
 package com.example.expensetracker
 
 import android.os.Bundle
@@ -16,10 +17,12 @@ class MainActivity : ComponentActivity() {
         
         // Initialize database context for Android
         AndroidDatabaseContext.init(this)
+        //create a logger instance
+//        AndroidLogcatLogger.installOnDebuggableApp(this, minPriority = VERBOSE)
 
         setContent {
-            ThemeProvider(useDarkTheme = false) {
-                 AppContent()
+            ThemeProvider {
+                AppContent()
             }
         }
     }

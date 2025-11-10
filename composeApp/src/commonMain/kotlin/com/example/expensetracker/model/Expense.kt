@@ -23,6 +23,6 @@ data class Expense(
     /**
      * Returns formatted amount with currency symbol
      */
-    fun getFormattedAmount(): String = currency.format(amount)
+    fun getFormattedAmount(): String =  currency.format(amount)
 }
 
