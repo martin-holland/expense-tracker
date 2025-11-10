@@ -43,8 +43,16 @@ fun ExpenseHistoryScreen(
     val appColors = LocalAppColors.current
     val uiState = viewModel.uiState
     
-    // Get filtered and grouped expenses
+    // Get filtered expenses and conversions
     val filteredExpenses = viewModel.getFilteredExpenses()
+    val filteredExpensesWithConversion by viewModel.convertedExpenses.collectAsState()
+    val showConvertedAmounts by viewModel.showConvertedAmounts.collectAsState()
+    
+    // Create a map for quick lookup of conversions by expense ID
+    val conversionMap = remember(filteredExpensesWithConversion) {
+        filteredExpensesWithConversion.associateBy { it.expense.id }
+    }
+    
     val groupedExpenses = groupExpensesByDate(filteredExpenses)
     
     // Scroll state for collapsing toolbar
@@ -123,10 +131,14 @@ fun ExpenseHistoryScreen(
                             items = expenses,
                             key = { it.id }
                         ) { expense ->
+                            val conversion = conversionMap[expense.id]
                             SwipeableExpenseItem(
                                 expense = expense,
                                 onEdit = { viewModel.openEditDialog(it) },
-                                onDelete = { viewModel.requestDeleteExpense(it) }
+                                onDelete = { viewModel.requestDeleteExpense(it) },
+                                convertedAmount = conversion?.convertedAmount,
+                                baseCurrency = conversion?.baseCurrency,
+                                showConvertedAmount = showConvertedAmounts
                             )
                         }
                     }

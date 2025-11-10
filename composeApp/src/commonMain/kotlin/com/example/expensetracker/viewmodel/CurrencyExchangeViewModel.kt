@@ -8,6 +8,7 @@ import com.example.expensetracker.data.repository.SettingsRepository
 import com.example.expensetracker.domain.CurrencyConverter
 import com.example.expensetracker.model.Currency
 import com.example.expensetracker.model.Expense
+import com.example.expensetracker.model.ExpenseWithConversion
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -237,13 +238,4 @@ class CurrencyExchangeViewModel(
         return "${timestamp.date} ${timestamp.hour}:${timestamp.minute.toString().padStart(2, '0')}"
     }
 }
-
-/**
- * Data class representing an expense with its converted amount
- */
-data class ExpenseWithConversion(
-    val expense: Expense,
-    val convertedAmount: Double?,
-    val baseCurrency: Currency
-)
 

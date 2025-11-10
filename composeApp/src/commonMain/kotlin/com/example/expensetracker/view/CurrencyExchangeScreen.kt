@@ -17,8 +17,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.expensetracker.model.Currency
 import com.example.expensetracker.model.Expense
+import com.example.expensetracker.model.ExpenseWithConversion
 import com.example.expensetracker.viewmodel.CurrencyExchangeViewModel
-import com.example.expensetracker.viewmodel.ExpenseWithConversion
 import com.example.theme.com.example.expensetracker.LocalAppColors
 
 /**
