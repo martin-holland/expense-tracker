@@ -49,6 +49,7 @@ kotlin {
             implementation(libs.kotlinx.datetime)
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.sqlite.bundled)
+            implementation("network.chaintech:cmpcharts:1.0.0")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
