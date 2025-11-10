@@ -41,7 +41,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(compose.materialIconsExtended)
             implementation(libs.kotlinx.datetime)
-
+            implementation("network.chaintech:cmpcharts:1.0.0")
 
         }
         commonTest.dependencies {

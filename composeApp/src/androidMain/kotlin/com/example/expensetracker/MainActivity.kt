@@ -13,6 +13,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        //create a logger instance
+//        AndroidLogcatLogger.installOnDebuggableApp(this, minPriority = VERBOSE)
+
 
         setContent {
             ThemeProvider {

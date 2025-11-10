@@ -41,13 +41,13 @@ fun AppContent() {
     var currentScreen by remember { mutableStateOf(AppScreen.DASHBOARD) }
 
     Scaffold(
-        containerColor = appColors.background,
-        bottomBar = {
-            BottomNavigationBar(
-                currentScreen = currentScreen,
-                onScreenSelected = { screen -> currentScreen = screen }
-            )
-        }
+            containerColor = appColors.background,
+            bottomBar = {
+                BottomNavigationBar(
+                        currentScreen = currentScreen,
+                        onScreenSelected = { screen -> currentScreen = screen }
+                )
+            }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             when (currentScreen) {
@@ -66,24 +66,24 @@ fun BottomNavigationBar(currentScreen: AppScreen, onScreenSelected: (AppScreen) 
     val appColors = LocalAppColors.current
 
     NavigationBar(
-        containerColor = appColors.card,
-        contentColor = appColors.foreground,
-        tonalElevation = 8.dp
+            containerColor = appColors.card,
+            contentColor = appColors.foreground,
+            tonalElevation = 8.dp
     ) {
         AppScreen.entries.forEach { screen ->
             NavigationBarItem(
-                icon = { Icon(imageVector = screen.icon, contentDescription = screen.title) },
-                label = { Text(screen.title) },
-                selected = currentScreen == screen,
-                onClick = { onScreenSelected(screen) },
-                colors =
-                    NavigationBarItemDefaults.colors(
-                        selectedIconColor = appColors.chart2,
-                        selectedTextColor = appColors.chart2,
-                        unselectedIconColor = appColors.mutedForeground,
-                        unselectedTextColor = appColors.mutedForeground,
-                        indicatorColor = appColors.secondary
-                    )
+                    icon = { Icon(imageVector = screen.icon, contentDescription = screen.title) },
+                    label = { Text(screen.title) },
+                    selected = currentScreen == screen,
+                    onClick = { onScreenSelected(screen) },
+                    colors =
+                            NavigationBarItemDefaults.colors(
+                                    selectedIconColor = appColors.chart2,
+                                    selectedTextColor = appColors.chart2,
+                                    unselectedIconColor = appColors.mutedForeground,
+                                    unselectedTextColor = appColors.mutedForeground,
+                                    indicatorColor = appColors.secondary
+                            )
             )
         }
     }
@@ -95,8 +95,8 @@ fun BlankScreen(@Suppress("UNUSED_PARAMETER") screenName: String) {
     val appColors = LocalAppColors.current
 
     Box(
-        modifier = Modifier.fillMaxSize().background(appColors.background),
-        contentAlignment = Alignment.Center
+            modifier = Modifier.fillMaxSize().background(appColors.background),
+            contentAlignment = Alignment.Center
     ) {
         // Empty screen - just background color
     }
