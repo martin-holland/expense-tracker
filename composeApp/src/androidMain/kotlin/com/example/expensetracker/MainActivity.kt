@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.expensetracker.data.database.AndroidDatabaseContext
+import com.example.expensetracker.data.worker.ExchangeRateRefreshWorker
 import com.example.theme.com.example.expensetracker.ThemeProvider
 
 class MainActivity : ComponentActivity() {
@@ -27,6 +28,15 @@ class MainActivity : ComponentActivity() {
             android.util.Log.d("MainActivity", "Database initialized successfully")
         } catch (e: Exception) {
             android.util.Log.e("MainActivity", "Error initializing database", e)
+        }
+        
+        // Initialize and schedule background exchange rate refresh
+        try {
+            ExchangeRateRefreshWorker.initialize(this)
+            ExchangeRateRefreshWorker.scheduleExchangeRateRefresh()
+            android.util.Log.d("MainActivity", "Exchange rate refresh worker scheduled")
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Error scheduling exchange rate refresh", e)
         }
         //create a logger instance
 //        AndroidLogcatLogger.installOnDebuggableApp(this, minPriority = VERBOSE)
