@@ -42,7 +42,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.expensetracker.model.Currency
@@ -50,11 +49,9 @@ import com.example.expensetracker.model.Expense
 import com.example.expensetracker.model.ExpenseCategory
 import com.example.expensetracker.viewmodel.DashBoardViewModel
 import com.example.theme.com.example.expensetracker.LocalAppColors
-import kotlin.text.category
-import kotlin.text.get
+
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Clock
-import kotlin.toString
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
