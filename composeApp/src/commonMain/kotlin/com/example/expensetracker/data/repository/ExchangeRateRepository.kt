@@ -121,6 +121,12 @@ class ExchangeRateRepository private constructor(
      * Gets an exchange rate synchronously
      * Uses cross-rate calculation if direct rate not available
      * 
+     * This method tries multiple strategies:
+     * 1. Direct rate lookup (baseCurrency -> targetCurrency)
+     * 2. Reverse rate lookup (targetCurrency -> baseCurrency, then invert)
+     * 3. Cross-rate via user's current base currency
+     * 4. Cross-rate via any available base currency in database
+     * 
      * @param baseCurrency Base currency
      * @param targetCurrency Target currency
      * @param date Optional date for historical rates. If null, uses latest rate
@@ -138,54 +144,103 @@ class ExchangeRateRepository private constructor(
         
         val dateString = date?.date?.toString()
         
-        // Try direct rate first
-        val directRate = exchangeRateDao.getRate(
-            baseCurrency.code,
-            targetCurrency.code,
-            dateString
-        )
+        // Strategy 1: Try direct rate first (with specific date if provided)
+        var directRate = if (dateString != null) {
+            exchangeRateDao.getRate(baseCurrency.code, targetCurrency.code, dateString)
+        } else {
+            null
+        }
+        
+        // If no rate found for specific date, fall back to latest rate (date = null)
+        if (directRate == null) {
+            directRate = exchangeRateDao.getRate(baseCurrency.code, targetCurrency.code, null)
+        }
         
         if (directRate != null) {
             return directRate.rate
         }
         
-        // Try cross-rate calculation via user's base currency
-        // This is the key optimization: if we have rates for user's base currency,
-        // we can calculate any currency pair conversion
+        // Strategy 2: Try reverse rate (if we have target -> base, invert it)
+        var reverseRate = if (dateString != null) {
+            exchangeRateDao.getRate(targetCurrency.code, baseCurrency.code, dateString)
+        } else {
+            null
+        }
+        
+        // If no reverse rate found for specific date, fall back to latest rate
+        if (reverseRate == null) {
+            reverseRate = exchangeRateDao.getRate(targetCurrency.code, baseCurrency.code, null)
+        }
+        
+        if (reverseRate != null && reverseRate.rate != 0.0) {
+            return 1.0 / reverseRate.rate
+        }
+        
+        // Strategy 3: Try cross-rate calculation via user's current base currency
         val userBaseCurrency = settingsRepository.getBaseCurrencySync()
         
         if (userBaseCurrency != baseCurrency && userBaseCurrency != targetCurrency) {
-            // Get rate from userBaseCurrency to baseCurrency
-            val rate1 = exchangeRateDao.getRate(
-                userBaseCurrency.code,
-                baseCurrency.code,
-                dateString
-            )
+            // Try with specific date first, then fall back to latest
+            var rate1 = if (dateString != null) {
+                exchangeRateDao.getRate(userBaseCurrency.code, baseCurrency.code, dateString)
+            } else {
+                null
+            }
+            if (rate1 == null) {
+                rate1 = exchangeRateDao.getRate(userBaseCurrency.code, baseCurrency.code, null)
+            }
             
-            // Get rate from userBaseCurrency to targetCurrency
-            val rate2 = exchangeRateDao.getRate(
-                userBaseCurrency.code,
-                targetCurrency.code,
-                dateString
-            )
+            var rate2 = if (dateString != null) {
+                exchangeRateDao.getRate(userBaseCurrency.code, targetCurrency.code, dateString)
+            } else {
+                null
+            }
+            if (rate2 == null) {
+                rate2 = exchangeRateDao.getRate(userBaseCurrency.code, targetCurrency.code, null)
+            }
             
             if (rate1 != null && rate2 != null && rate1.rate != 0.0) {
                 // Calculate: baseCurrency -> targetCurrency = (userBase -> target) / (userBase -> base)
-                // Example: USD -> EUR = (USD -> EUR) / (USD -> USD) = 0.85 / 1.0 = 0.85
-                // But if we have GBP -> USD and GBP -> EUR, then USD -> EUR = (GBP -> EUR) / (GBP -> USD)
                 return rate2.rate / rate1.rate
             }
         }
         
-        // Fallback: try direct reverse lookup (if we have target -> base, invert it)
-        val reverseRate = exchangeRateDao.getRate(
-            targetCurrency.code,
-            baseCurrency.code,
-            dateString
-        )
+        // Strategy 4: Try cross-rate via any available base currency in database
+        // This handles the case where user changed base currency but we still have rates for old base
+        val availableBases = exchangeRateDao.getAvailableBaseCurrencies()
         
-        if (reverseRate != null && reverseRate.rate != 0.0) {
-            return 1.0 / reverseRate.rate
+        for (availableBase in availableBases) {
+            val availableBaseCurrency = Currency.fromCode(availableBase)
+            
+            // Skip if it's one of the currencies we're converting between
+            if (availableBaseCurrency == baseCurrency || availableBaseCurrency == targetCurrency) {
+                continue
+            }
+            
+            // Try to use this base currency for cross-rate calculation
+            // Try with specific date first, then fall back to latest
+            var rate1 = if (dateString != null) {
+                exchangeRateDao.getRate(availableBase, baseCurrency.code, dateString)
+            } else {
+                null
+            }
+            if (rate1 == null) {
+                rate1 = exchangeRateDao.getRate(availableBase, baseCurrency.code, null)
+            }
+            
+            var rate2 = if (dateString != null) {
+                exchangeRateDao.getRate(availableBase, targetCurrency.code, dateString)
+            } else {
+                null
+            }
+            if (rate2 == null) {
+                rate2 = exchangeRateDao.getRate(availableBase, targetCurrency.code, null)
+            }
+            
+            if (rate1 != null && rate2 != null && rate1.rate != 0.0) {
+                // Calculate: baseCurrency -> targetCurrency = (availableBase -> target) / (availableBase -> base)
+                return rate2.rate / rate1.rate
+            }
         }
         
         return null

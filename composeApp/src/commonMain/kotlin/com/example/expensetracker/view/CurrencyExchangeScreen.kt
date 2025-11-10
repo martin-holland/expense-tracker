@@ -14,26 +14,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.expensetracker.model.Currency
 import com.example.expensetracker.model.Expense
+import com.example.expensetracker.viewmodel.CurrencyExchangeViewModel
+import com.example.expensetracker.viewmodel.ExpenseWithConversion
 import com.example.theme.com.example.expensetracker.LocalAppColors
-import kotlinx.datetime.Clock
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 
 /**
  * Currency Exchange Screen (Full Screen)
  * 
  * Displays currency exchange information, converted expenses, and exchange rates.
- * Initially uses mock data, will be wired to real services later.
+ * Uses CurrencyExchangeViewModel for real data from repositories.
  * 
  * @param onNavigateBack Callback when back button is clicked
+ * @param viewModel The CurrencyExchangeViewModel instance (defaults to new instance)
  * @param modifier Modifier for layout customization
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CurrencyExchangeScreen(
     onNavigateBack: () -> Unit,
+    viewModel: CurrencyExchangeViewModel = viewModel { CurrencyExchangeViewModel() },
     modifier: Modifier = Modifier
 ) {
     // Navigation state for Currency Settings screen
@@ -48,43 +50,13 @@ fun CurrencyExchangeScreen(
     }
     val appColors = LocalAppColors.current
     
-    // Mock data - will be replaced with real ViewModel later
-    val baseCurrency = Currency.USD
-    val mockExpenses = listOf(
-        Expense(
-            id = "1",
-            category = com.example.expensetracker.model.ExpenseCategory.FOOD,
-            description = "Lunch at restaurant",
-            amount = 45.50,
-            currency = Currency.EUR,
-            date = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-        ),
-        Expense(
-            id = "2",
-            category = com.example.expensetracker.model.ExpenseCategory.TRAVEL,
-            description = "Gas station",
-            amount = 120.00,
-            currency = Currency.GBP,
-            date = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-        )
-    )
-    
-    // Mock converted amounts (will be calculated later)
-    val mockConvertedAmounts = mapOf(
-        "1" to 50.05, // EUR to USD
-        "2" to 164.40 // GBP to USD
-    )
-    
-    // Mock exchange rates (will be fetched from API later)
-    val mockExchangeRates = mapOf(
-        Currency.EUR to 1.10,
-        Currency.GBP to 1.37,
-        Currency.JPY to 0.0067,
-        Currency.CHF to 1.12
-    )
-    
-    // Mock last update time (2 hours ago)
-    val lastUpdateTime = "Updated 2 hours ago"
+    // Observe ViewModel state
+    val baseCurrency by viewModel.baseCurrency.collectAsState()
+    val expensesWithConversion by viewModel.expensesWithConversion.collectAsState()
+    val exchangeRates by viewModel.exchangeRates.collectAsState()
+    val lastUpdateTime by viewModel.lastUpdateTime.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
     
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -195,46 +167,78 @@ fun CurrencyExchangeScreen(
                                     color = appColors.foreground
                                 )
                                 Text(
-                                    text = lastUpdateTime,
+                                    text = lastUpdateTime ?: "Never",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = appColors.mutedForeground
                                 )
                             }
                             
                             // Rate list
-                            mockExchangeRates.forEach { (currency, rate) ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "${currency.code} (${currency.symbol})",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = appColors.foreground
-                                    )
-                                    Text(
-                                        text = String.format("%.4f", rate),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        color = appColors.foreground
-                                    )
+                            if (exchangeRates.isEmpty()) {
+                                Text(
+                                    text = "No exchange rates available. Please refresh rates.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = appColors.mutedForeground
+                                )
+                            } else {
+                                exchangeRates.forEach { (currency, rate) ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "${currency.code} (${currency.symbol})",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = appColors.foreground
+                                        )
+                                        Text(
+                                            text = String.format("%.4f", rate),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium,
+                                            color = appColors.foreground
+                                        )
+                                    }
                                 }
                             }
                             
                             Spacer(modifier = Modifier.height(8.dp))
                             
+                            // Error message display
+                            errorMessage?.let { error ->
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+                                    ),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(
+                                        text = error,
+                                        modifier = Modifier.padding(12.dp),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                            
                             Button(
-                                onClick = {
-                                    // Mock implementation: Log for now
-                                    println("Refresh rates clicked - will refresh from API later")
-                                },
+                                onClick = { viewModel.refreshExchangeRates() },
                                 modifier = Modifier.fillMaxWidth(),
+                                enabled = !isLoading,
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = appColors.primary,
                                     contentColor = appColors.primaryForeground
                                 )
                             ) {
+                                if (isLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        color = appColors.primaryForeground,
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                }
                                 Icon(
                                     imageVector = Icons.Filled.Refresh,
                                     contentDescription = null,
@@ -258,56 +262,83 @@ fun CurrencyExchangeScreen(
                 )
             }
                 
-            items(mockExpenses) { expense ->
-                val convertedAmount = mockConvertedAmounts[expense.id]
-                
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = appColors.card
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+            if (expensesWithConversion.isEmpty()) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = appColors.card
+                        ),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        Text(
+                            text = "No expenses to convert",
+                            modifier = Modifier.padding(16.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = appColors.mutedForeground
+                        )
+                    }
+                }
+            } else {
+                items(expensesWithConversion) { expenseWithConversion ->
+                    val expense = expenseWithConversion.expense
+                    val convertedAmount = expenseWithConversion.convertedAmount
+                    
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = appColors.card
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = expense.description,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium,
-                                color = appColors.foreground
-                            )
-                            Text(
-                                text = expense.category.displayName,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = appColors.mutedForeground
-                            )
-                        }
-                        
-                        Column(
-                            horizontalAlignment = Alignment.End,
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = expense.getFormattedAmount(),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = appColors.mutedForeground
-                            )
-                            if (convertedAmount != null) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
                                 Text(
-                                    text = baseCurrency.format(convertedAmount),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
+                                    text = expense.description,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium,
                                     color = appColors.foreground
                                 )
+                                Text(
+                                    text = expense.category.displayName,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = appColors.mutedForeground
+                                )
+                            }
+                            
+                            Column(
+                                horizontalAlignment = Alignment.End,
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = expense.getFormattedAmount(),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = appColors.mutedForeground
+                                )
+                                if (convertedAmount != null) {
+                                    Text(
+                                        text = baseCurrency.format(convertedAmount),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = appColors.foreground
+                                    )
+                                } else {
+                                    Text(
+                                        text = "N/A",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = appColors.mutedForeground,
+                                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                    )
+                                }
                             }
                         }
                     }

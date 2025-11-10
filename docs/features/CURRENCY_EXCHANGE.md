@@ -560,37 +560,41 @@ This document provides a comprehensive specification for implementing currency e
 
 ---
 
-### Task 8: Wire Currency Exchange UI to Backend
+### Task 8: Wire Currency Exchange UI to Backend ✅ COMPLETED
 
 **Priority:** High  
 **Estimated Complexity:** Low  
-**Dependencies:** Task 1, Task 6
+**Dependencies:** Task 1, Task 6  
+**Status:** ✅ All subtasks completed
 
-#### Subtask 8.1: Wire Banner to Navigation
+#### Subtask 8.1: Wire Banner to Navigation ✅
 
 - **File:** `commonMain/kotlin/com/example/expensetracker/view/ExpenseHistoryScreen.kt`
 - **Description:** Connect banner "Open" button to actual navigation
 - **Changes:**
-  - Replace mock callback with real navigation to CurrencyExchangeScreen
-  - Implement proper navigation (bottom sheet, dialog, or full screen)
-  - Pass necessary parameters (ViewModel, etc.) to CurrencyExchangeScreen
+  - ✅ Banner navigation already wired in ExpenseHistoryScreen (lines 54-62)
+  - ✅ Full screen navigation implemented (Option A)
+  - ✅ CurrencyExchangeScreen receives ViewModel via default parameter
+- **Status:** ✅ Completed - Banner "Open" button navigates to CurrencyExchangeScreen as full screen
 
-#### Subtask 8.2: Wire Currency Exchange Screen to Backend
+#### Subtask 8.2: Wire Currency Exchange Screen to Backend ✅
 
 - **File:** `commonMain/kotlin/com/example/expensetracker/view/CurrencyExchangeScreen.kt`
 - **Description:** Connect CurrencyExchangeScreen to real data and services
 - **Changes:**
-  - Create or update CurrencyExchangeViewModel with real dependencies
-  - Inject `CurrencyConverter` and `SettingsRepository`
-  - Replace mock data with real expense data from ExpenseRepository
-  - Replace mock rates with real exchange rates from ExchangeRateRepository
-  - Connect "Refresh Rates" button to actual refresh functionality
-  - Show real last update timestamp from SettingsRepository
-  - Display actual converted amounts using CurrencyConverter
+  - ✅ Created CurrencyExchangeViewModel with real dependencies (CurrencyConverter, SettingsRepository, ExchangeRateRepository, ExpenseRepository)
+  - ✅ Replaced mock data with real expense data from ExpenseRepository
+  - ✅ Replaced mock rates with real exchange rates from ExchangeRateRepository
+  - ✅ Connected "Refresh Rates" button to ExchangeRateRepository.refreshExchangeRates()
+  - ✅ Show real last update timestamp from SettingsRepository
+  - ✅ Display actual converted amounts using CurrencyConverter
+  - ✅ Added ExpenseWithConversion data class for expense + converted amount
 - **State Management:**
-  - Replace placeholder ViewModel/local state with real ViewModel
-  - Handle loading states during rate refresh
-  - Show error messages from API calls
+  - ✅ Replaced placeholder ViewModel/local state with real CurrencyExchangeViewModel
+  - ✅ Handle loading states during rate refresh (CircularProgressIndicator)
+  - ✅ Show error messages from API calls (error card display)
+  - ✅ Flow-based reactive updates for all data (base currency, expenses, rates, timestamps)
+- **Status:** ✅ Completed - CurrencyExchangeScreen fully wired to backend with real data, conversions, and refresh functionality
 
 ---
 
@@ -850,16 +854,19 @@ This document provides a comprehensive specification for implementing currency e
    - ✅ All conversion methods implemented (Flow and sync versions)
    - ✅ ExpenseExtensions.kt created with getConvertedAmount extension function
 
-### Phase 3: Wire UI to Backend (Week 3) - PENDING
+### Phase 3: Wire UI to Backend (Week 3) - IN PROGRESS
 
 7. ✅ Task 7: Wire Settings UI to Backend - COMPLETED
    - ✅ Update SettingsViewModel to use SettingsRepository
    - ✅ Connect CurrencySettingsScreen to real data
    - ✅ Implement API connection testing with ExchangeRateApiService
    - ✅ Add Flow-based reactive updates for all settings
-8. ⏳ Task 8: Wire Currency Exchange UI to Backend - PENDING
-   - Wire banner to navigation (✅ Already wired)
-   - Connect CurrencyExchangeScreen to real data and services
+8. ✅ Task 8: Wire Currency Exchange UI to Backend - COMPLETED
+   - ✅ Wire banner to navigation (already wired)
+   - ✅ Create CurrencyExchangeViewModel with real dependencies
+   - ✅ Connect CurrencyExchangeScreen to real data and services
+   - ✅ Implement expense conversion display
+   - ✅ Connect Refresh Rates button functionality
 9. ⏳ Task 9: Currency Conversion on Display - PENDING
    - Show converted amounts in expense list
 
@@ -1143,13 +1150,24 @@ implementation(libs.ktor.client.darwin)
 
 ---
 
-**Document Version:** 1.3  
-**Last Updated:** 2024-11-07  
-**Status:** Phase 1 & 2 Complete, Phase 3 In Progress - Task 7 ✅ COMPLETED
+**Document Version:** 1.4  
+**Last Updated:** 2024-11-10  
+**Status:** Phase 1, 2, & 3 Partial Complete - Tasks 1-8 ✅ COMPLETED
 
-## Recent Updates (v1.3) - Implementation Progress
+## Recent Updates (v1.4) - Implementation Progress
 
 ### Phase 3: Wire UI to Backend - IN PROGRESS
+
+**Task 8: Wire Currency Exchange UI to Backend** - ✅ COMPLETED
+
+- ✅ CurrencyExchangeViewModel created with all real dependencies
+- ✅ CurrencyExchangeScreen wired to use ViewModel and real data
+- ✅ Real expense data from ExpenseRepository displayed
+- ✅ Real exchange rates from ExchangeRateRepository displayed
+- ✅ Expense conversion using CurrencyConverter implemented
+- ✅ Refresh Rates button connected to ExchangeRateRepository
+- ✅ Loading states and error handling implemented
+- ✅ Last update timestamp from SettingsRepository displayed
 
 **Task 7: Wire Settings UI to Backend** - ✅ COMPLETED
 

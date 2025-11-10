@@ -126,5 +126,14 @@ interface ExchangeRateDao {
         ORDER BY date DESC, targetCurrency
     """)
     suspend fun getRatesSync(baseCurrency: String, date: String?): List<ExchangeRateEntity>
+    
+    /**
+     * Gets all distinct base currencies that have rates stored
+     * Useful for finding available base currencies for cross-rate calculations
+     * 
+     * @return List of distinct base currency codes
+     */
+    @Query("SELECT DISTINCT baseCurrency FROM exchange_rates ORDER BY baseCurrency")
+    suspend fun getAvailableBaseCurrencies(): List<String>
 }
 
