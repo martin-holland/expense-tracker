@@ -459,13 +459,14 @@ This document provides a comprehensive specification for implementing currency e
 
 ---
 
-### Task 6: Currency Conversion Service
+### Task 6: Currency Conversion Service ✅ COMPLETED
 
 **Priority:** High  
 **Estimated Complexity:** Low  
-**Dependencies:** Task 3, Task 5
+**Dependencies:** Task 3, Task 5  
+**Status:** ✅ All subtasks completed
 
-#### Subtask 6.1: Create Currency Converter
+#### Subtask 6.1: Create Currency Converter ✅
 
 - **File:** `commonMain/kotlin/com/example/expensetracker/domain/CurrencyConverter.kt`
 - **Description:** Business logic for currency conversion with cross-rate optimization
@@ -475,35 +476,39 @@ This document provides a comprehensive specification for implementing currency e
   - `convertToBaseCurrencySync(expense: Expense): suspend Expense` - Synchronous conversion
   - `convertAmount(amount: Double, fromCurrency: Currency, toCurrency: Currency, date: LocalDateTime? = null): Flow<Double?>` - Convert amount
   - `convertAmountSync(amount: Double, fromCurrency: Currency, toCurrency: Currency, date: LocalDateTime? = null): suspend Double?` - Synchronous amount conversion
+  - `convertExpensesToBaseCurrency(expenses: List<Expense>): suspend List<Expense>` - Convert list of expenses to base currency
 - **Optimized Conversion Logic:**
   - If `fromCurrency == toCurrency`, return amount as-is
   - Get base currency from SettingsRepository
-  - **Direct Rate:** If we have cached rate for `fromCurrency → toCurrency`, use it
+  - **Direct Rate:** ExchangeRateRepository handles direct rate lookup
   - **Via Base Currency (Optimized):**
+    - ExchangeRateRepository automatically uses cross-rate calculation
     - Get rate `baseCurrency → fromCurrency` (rate1)
     - Get rate `baseCurrency → toCurrency` (rate2)
     - Calculate: `amount * (rate2 / rate1)`
     - Example: Convert 100 EUR to GBP
       - Get USD→EUR = 0.85, USD→GBP = 0.73
       - Calculate: 100 \* (0.73 / 0.85) = 85.88 GBP
-  - **Fallback:** If base currency rates unavailable, try direct rate lookup
+  - **Fallback:** ExchangeRateRepository handles reverse rate lookup
 - **Key Optimization:**
   - Single API call fetches ALL rates for base currency
   - All conversions calculated from those rates (no additional API calls)
   - Dramatically reduces API usage
 - **Error Handling:**
   - Return `null` if rate unavailable
-  - Log errors for debugging
-  - Handle division by zero (if rate1 is 0)
+  - Handle NaN and Infinite values
+  - Preserve original expense if conversion fails
+- **Status:** ✅ Completed - CurrencyConverter created with singleton pattern, all conversion methods, and optimized cross-rate calculation
 
-#### Subtask 6.2: Add Converted Amount to Expense Model (Optional)
+#### Subtask 6.2: Add Converted Amount to Expense Model ✅
 
-- **File:** `commonMain/kotlin/com/example/expensetracker/model/Expense.kt`
+- **File:** `commonMain/kotlin/com/example/expensetracker/model/ExpenseExtensions.kt`
 - **Description:** Add helper method for converted amount
 - **Changes:**
-  - Add extension function: `fun Expense.getConvertedAmount(baseCurrency: Currency, converter: CurrencyConverter): Flow<Double?>`
+  - Added extension function: `fun Expense.getConvertedAmount(baseCurrency: Currency, converter: CurrencyConverter): Flow<Double?>`
   - Keep original amount unchanged (preserve original currency)
-- **Note:** Don't modify existing Expense structure, use extension functions
+- **Note:** Extension function in separate file to avoid modifying core Expense structure
+- **Status:** ✅ Completed - ExpenseExtensions.kt created with getConvertedAmount extension function
 
 ---
 
@@ -835,7 +840,10 @@ This document provides a comprehensive specification for implementing currency e
    - ✅ ExchangeRateEntity and ExchangeRateDao created
    - ✅ ExpenseDatabase updated to version 3 with migration
    - ✅ ExchangeRateRepository created with cross-rate calculation and caching
-6. ⏳ Task 6: Currency Conversion Service - PENDING
+6. ✅ Task 6: Currency Conversion Service - COMPLETED
+   - ✅ CurrencyConverter created with singleton pattern
+   - ✅ All conversion methods implemented (Flow and sync versions)
+   - ✅ ExpenseExtensions.kt created with getConvertedAmount extension function
 
 ### Phase 3: Wire UI to Backend (Week 3) - PENDING
 

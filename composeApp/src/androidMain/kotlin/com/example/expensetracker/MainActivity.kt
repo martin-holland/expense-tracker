@@ -16,6 +16,18 @@ class MainActivity : ComponentActivity() {
         
         // Initialize database context for Android
         AndroidDatabaseContext.init(this)
+        
+        // Initialize database early to ensure migrations run
+        // This triggers database creation and applies migrations if needed
+        android.util.Log.d("MainActivity", "Initializing database...")
+        try {
+            val database = com.example.expensetracker.data.database.getRoomDatabase()
+            // Access a DAO to ensure database is fully initialized
+            database.settingsDao()
+            android.util.Log.d("MainActivity", "Database initialized successfully")
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Error initializing database", e)
+        }
         //create a logger instance
 //        AndroidLogcatLogger.installOnDebuggableApp(this, minPriority = VERBOSE)
 
