@@ -1,9 +1,9 @@
-package com.example.expensetracker.Service
+package com.example.expensetracker.service
 
 interface MicrophoneService {
 
     fun hasMicrophonePermission(): Boolean
-    suspend fun requestMicrophonePermission(): Boolean
+    fun requestMicrophonePermission()
 
 }
 

@@ -1,30 +1,25 @@
-package com.example.expensetracker
+package com.example.expensetracker.service
 
 import android.content.Context
 import android.content.pm.PackageManager
-import android.media.MediaPlayer
-import android.media.MediaRecorder
 import androidx.core.content.ContextCompat
-import com.example.expensetracker.Service.MicrophoneService
-import java.io.ByteArrayOutputStream
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.example.expensetracker.MainActivity
+import com.example.expensetracker.service.MicrophoneService
 
 class AndroidMicrophoneService(private val context: Context) : MicrophoneService {
 
     override fun hasMicrophonePermission(): Boolean {
-        return ContextCompat.checkSelfPermission(
+        val hasPermission = ContextCompat.checkSelfPermission(
             context,
             android.Manifest.permission.RECORD_AUDIO
         ) == PackageManager.PERMISSION_GRANTED
+
+        println("🎤 Microphone permission check: $hasPermission")
+        return hasPermission
     }
 
-    override suspend fun requestMicrophonePermission(): Boolean {
-        // In a real app, you'd use ActivityResultContracts.RequestPermission
-        return true
+    override fun requestMicrophonePermission() {
+        (context as? MainActivity)?.requestMicrophonePermission()
     }
 
     companion object {
@@ -41,7 +36,7 @@ class AndroidMicrophoneService(private val context: Context) : MicrophoneService
 
 actual fun getMicrophoneService(): MicrophoneService {
     return AndroidMicrophoneService.getInstance(
-        com.example.testkotlinmultiplatform.MainActivity.appContext
+        com.example.expensetracker.MainActivity.appContext
     )
 }
 
