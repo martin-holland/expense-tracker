@@ -5,7 +5,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.ElectricBolt
+import androidx.compose.material.icons.filled.Fastfood
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -72,7 +79,15 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
                     Text("Expense Tracker", fontSize = 14.sp, color = AppColors.mutedForeground)
                 }
             }
-            Text("Cancel", color = AppColors.foreground, fontWeight = FontWeight.Medium)
+            // Add a clickable "Cancel" text with a TODO() placeholder
+            Text(
+                text = "Cancel",
+                color = AppColors.foreground,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.clickable {
+                    // TODO: Implement navigation back or clear fields
+                }
+            )
         }
 
         Spacer(Modifier.height(24.dp))
@@ -106,10 +121,16 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
 
         // === Amount Section ===
         SectionCard(title = "Amount") {
+            val symbol = when (currency) {
+                "USD" -> "$"
+                "EUR" -> "€"
+                "GBP" -> "£"
+                else -> currency
+            }
             OutlinedTextField(
                 value = amount,
                 onValueChange = { viewModel.onAmountChanged(it) },
-                placeholder = { Text("$ 0.00", color = AppColors.mutedForeground) },
+                placeholder = { Text("$symbol 0.00", color = AppColors.mutedForeground) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -120,7 +141,57 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
                 )
             )
         }
+        // === Category Section ===
+        SectionCard(title = "Category") {
+            val categories = listOf(
+                Triple("Food", Icons.Default.Fastfood, Color(0xFFFFEAEA)),
+                Triple("Travel", Icons.Default.DirectionsCar, Color(0xFFE5F8FA)),
+                Triple("Utilities", Icons.Default.ElectricBolt, Color(0xFFEAF9EE)),
+                Triple("Other", Icons.Default.MoreHoriz, Color(0xFFFFF8E8))
+            )
 
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                categories.chunked(2).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        row.forEach { (label, icon, bgColor) ->
+                            Card(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { viewModel.onCategorySelected(label) },
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (category == label) accentGreen else AppColors.border
+                                ),
+                                colors = CardDefaults.cardColors(containerColor = Color.White)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(vertical = 14.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(46.dp)
+                                            .clip(CircleShape)
+                                            .background(bgColor),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            icon,
+                                            contentDescription = label,
+                                            tint = accentGreen,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
+                                    Spacer(Modifier.height(6.dp))
+                                    Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         // === Date Section ===
         SectionCard(title = "Date") {
             Row(
@@ -162,6 +233,49 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
 
         Spacer(Modifier.height(30.dp))
 
+
+        // === Note Section ===
+        SectionCard(title = "Note (Optional)") {
+            OutlinedTextField(
+                value = note,
+                onValueChange = { viewModel.onNoteChanged(it) },
+                placeholder = { Text("Add a note about this expense...", color = AppColors.mutedForeground) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = AppColors.inputBackground,
+                    unfocusedContainerColor = AppColors.inputBackground,
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent
+                )
+            )
+        }
+
+        // === Quick Input Section ===
+        Text("Quick Input", color = AppColors.foreground, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(8.dp))
+        DashedCard(accentGreen) {
+            Row(
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                QuickInputItem(
+                    label = "Voice Input",
+                    subtext = "Tap to speak",
+                    icon = Icons.Default.Mic,
+                    accent = accentGreen
+                )
+                QuickInputItem(
+                    label = "Receipt",
+                    subtext = "Tap to capture",
+                    icon = Icons.Default.CameraAlt,
+                    accent = accentGreen
+                )
+            }
+        }
+
+        Spacer(Modifier.height(40.dp))
         Button(
             onClick = { viewModel.saveExpense() },
             colors = ButtonDefaults.buttonColors(containerColor = accentGreen),
@@ -177,8 +291,6 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
             Spacer(Modifier.height(10.dp))
             Text(it, color = Color.Red, fontSize = 14.sp)
         }
-
-        Spacer(Modifier.height(40.dp))
     }
 }
 
