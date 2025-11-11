@@ -11,7 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
@@ -98,6 +98,7 @@ class SettingsRepository private constructor(
     /**
      * Updates the last exchange rate update timestamp to now
      */
+    @OptIn(kotlin.time.ExperimentalTime::class)
     suspend fun updateLastExchangeRateUpdate() {
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         updateLastExchangeRateUpdate(now)

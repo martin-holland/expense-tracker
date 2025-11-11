@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -123,6 +123,7 @@ class ExchangeRateRepository private constructor(
      * @param entity The exchange rate entity to check
      * @return Pair of (isStale: Boolean, daysOld: Int). Returns null if timestamp is invalid
      */
+    @OptIn(kotlin.time.ExperimentalTime::class)
     private fun isRateStale(entity: ExchangeRateEntity): Pair<Boolean, Int>? {
         return try {
             val lastUpdated = LocalDateTime.parse(entity.lastUpdated)
@@ -320,6 +321,7 @@ class ExchangeRateRepository private constructor(
      * @param baseCurrency Base currency to fetch rates for
      * @return Result indicating success or failure
      */
+    @OptIn(kotlin.time.ExperimentalTime::class)
     suspend fun refreshExchangeRates(baseCurrency: Currency): Result<Unit> {
         return try {
             // Get API configuration from settings
@@ -375,6 +377,7 @@ class ExchangeRateRepository private constructor(
      * @param baseCurrency Base currency to check
      * @return true if rates need refresh, false otherwise
      */
+    @OptIn(kotlin.time.ExperimentalTime::class)
     suspend fun isRateStale(baseCurrency: Currency): Boolean {
         val latestRates = exchangeRateDao.getRatesSync(baseCurrency.code, null)
         
@@ -408,6 +411,7 @@ class ExchangeRateRepository private constructor(
     /**
      * Cleans up exchange rates older than 30 days
      */
+    @OptIn(kotlin.time.ExperimentalTime::class)
     suspend fun clearOldRates() {
         try {
             // Calculate date 30 days ago

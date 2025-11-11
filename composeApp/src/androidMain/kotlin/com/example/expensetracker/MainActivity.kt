@@ -1,3 +1,4 @@
+// androidMain/MainActivity.kt
 package com.example.expensetracker
 
 import android.os.Bundle
@@ -42,8 +43,8 @@ class MainActivity : ComponentActivity() {
 //        AndroidLogcatLogger.installOnDebuggableApp(this, minPriority = VERBOSE)
 
         setContent {
-            ThemeProvider(useDarkTheme = false) {
-                 AppContent()
+            ThemeProvider {
+                AppContent()
             }
         }
     }
