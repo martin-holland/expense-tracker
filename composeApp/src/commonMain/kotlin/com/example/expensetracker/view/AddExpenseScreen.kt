@@ -1,8 +1,6 @@
-package com.example.expensetracker
+package com.example.expensetracker.view
 
 import androidx.compose.foundation.*
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,29 +12,36 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.foundation.Canvas
-
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.expensetracker.theme.AppColors
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.expensetracker.viewmodel.AddExpenseViewModel
+import com.example.theme.com.example.expensetracker.AppColors
+import com.example.theme.com.example.expensetracker.LocalAppColors
+import kotlinx.datetime.*
+import kotlin.time.ExperimentalTime
 
+@OptIn(ExperimentalFoundationApi::class, ExperimentalTime::class)
 @Composable
-fun AddExpenseScreen() {
-    // === STATE ===
-    var currency by remember { mutableStateOf("USD") }
-    var amount by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf("Nov 6, 2025") }
-    var note by remember { mutableStateOf("") }
-
-    val accentGreen = Color(0xFF00C4B3)
+fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
+    val appColors = LocalAppColors.current
+    val accentGreen = appColors.chart2
     val sectionShape = RoundedCornerShape(12.dp)
+
+    val currency = viewModel.currency
+    val amount = viewModel.amount
+    val category = viewModel.category
+    val note = viewModel.note
+    val date = viewModel.date
+
+    var showDialog by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState()
 
     Column(
         modifier = Modifier
@@ -76,8 +81,15 @@ fun AddExpenseScreen() {
         SectionCard(title = "Currency") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 listOf("USD", "EUR", "GBP").forEach { curr ->
+                    val symbol = when (curr) {
+                        "USD" -> "$"
+                        "EUR" -> "€"
+                        "GBP" -> "£"
+                        else -> curr
+                    }
+
                     Button(
-                        onClick = { currency = curr },
+                        onClick = { viewModel.onCurrencySelected(curr) },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (currency == curr) AppColors.primary else Color.White,
                             contentColor = if (currency == curr) AppColors.primaryForeground else AppColors.foreground
@@ -86,7 +98,7 @@ fun AddExpenseScreen() {
                         border = BorderStroke(1.dp, AppColors.border),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("£ $curr", fontWeight = FontWeight.Medium)
+                        Text("$symbol $curr", fontWeight = FontWeight.Medium)
                     }
                 }
             }
@@ -96,7 +108,7 @@ fun AddExpenseScreen() {
         SectionCard(title = "Amount") {
             OutlinedTextField(
                 value = amount,
-                onValueChange = { amount = it.filter { c -> c.isDigit() || c == '.' } },
+                onValueChange = { viewModel.onAmountChanged(it) },
                 placeholder = { Text("$ 0.00", color = AppColors.mutedForeground) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
@@ -109,119 +121,49 @@ fun AddExpenseScreen() {
             )
         }
 
-        // === Category Section ===
-        SectionCard(title = "Category") {
-            val categories = listOf(
-                Triple("Food", Icons.Default.Fastfood, Color(0xFFFFEAEA)),
-                Triple("Travel", Icons.Default.DirectionsCar, Color(0xFFE5F8FA)),
-                Triple("Utilities", Icons.Default.ElectricBolt, Color(0xFFEAF9EE)),
-                Triple("Other", Icons.Default.MoreHoriz, Color(0xFFFFF8E8))
-            )
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                categories.chunked(2).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        row.forEach { (label, icon, bgColor) ->
-                            Card(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable { category = label },
-                                shape = RoundedCornerShape(12.dp),
-                                border = BorderStroke(
-                                    1.dp,
-                                    if (category == label) accentGreen else AppColors.border
-                                ),
-                                colors = CardDefaults.cardColors(containerColor = Color.White)
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(vertical = 14.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(46.dp)
-                                            .clip(CircleShape)
-                                            .background(bgColor),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            icon,
-                                            contentDescription = label,
-                                            tint = accentGreen,
-                                            modifier = Modifier.size(22.dp)
-                                        )
-                                    }
-                                    Spacer(Modifier.height(6.dp))
-                                    Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         // === Date Section ===
         SectionCard(title = "Date") {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, AppColors.border, sectionShape)
-                    .padding(12.dp),
+                    .border(1.dp, appColors.border, sectionShape)
+                    .padding(12.dp)
+                    .clickable { showDialog = true },
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(Icons.Default.CalendarToday, contentDescription = null, tint = accentGreen)
                 Spacer(Modifier.width(8.dp))
-                Text(date, color = AppColors.foreground, fontSize = 15.sp)
+                Text(date, color = appColors.foreground, fontSize = 15.sp)
             }
-        }
 
-        // === Note Section ===
-        SectionCard(title = "Note (Optional)") {
-            OutlinedTextField(
-                value = note,
-                onValueChange = { note = it },
-                placeholder = { Text("Add a note about this expense...", color = AppColors.mutedForeground) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = AppColors.inputBackground,
-                    unfocusedContainerColor = AppColors.inputBackground,
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent
-                )
-            )
-        }
-
-        // === Quick Input Section ===
-        Text("Quick Input", color = AppColors.foreground, fontWeight = FontWeight.SemiBold)
-        Spacer(Modifier.height(8.dp))
-        DashedCard(accentGreen) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                QuickInputItem(
-                    label = "Voice Input",
-                    subtext = "Tap to speak",
-                    icon = Icons.Default.Mic,
-                    accentGreen
-                )
-                QuickInputItem(
-                    label = "Receipt",
-                    subtext = "Tap to capture",
-                    icon = Icons.Default.CameraAlt,
-                    accentGreen
-                )
+            if (showDialog) {
+                DatePickerDialog(
+                    onDismissRequest = { showDialog = false },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            datePickerState.selectedDateMillis?.let { millis ->
+                                val instant = Instant.fromEpochMilliseconds(millis)
+                                val localDate = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
+                                val monthName = localDate.month.name.lowercase().replaceFirstChar { it.uppercase() }
+                                val formatted = "$monthName ${localDate.dayOfMonth}, ${localDate.year}"
+                                viewModel.onDateSelected(formatted)
+                            }
+                            showDialog = false
+                        }) { Text("OK", color = accentGreen) }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDialog = false }) { Text("Cancel", color = accentGreen) }
+                    }
+                ) {
+                    DatePicker(state = datePickerState)
+                }
             }
         }
 
         Spacer(Modifier.height(30.dp))
 
-        // === Save Expense Button ===
         Button(
-            onClick = { println("✅ Expense saved!") },
+            onClick = { viewModel.saveExpense() },
             colors = ButtonDefaults.buttonColors(containerColor = accentGreen),
             shape = RoundedCornerShape(10.dp),
             modifier = Modifier
@@ -231,9 +173,16 @@ fun AddExpenseScreen() {
             Text("Save Expense", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
         }
 
+        viewModel.errorMessage?.let {
+            Spacer(Modifier.height(10.dp))
+            Text(it, color = Color.Red, fontSize = 14.sp)
+        }
+
         Spacer(Modifier.height(40.dp))
     }
 }
+
+
 
 // ---------- REUSABLE COMPOSABLES ----------
 
@@ -282,15 +231,11 @@ private fun DashedCard(accent: Color, content: @Composable BoxScope.() -> Unit) 
             .clip(RoundedCornerShape(12.dp))
             .background(accent.copy(alpha = 0.05f))
             .border(
-                BorderStroke(
-                    1.dp,
-                    Brush.horizontalGradient(listOf(accent, accent)),
-                ),
+                BorderStroke(1.dp, Brush.horizontalGradient(listOf(accent, accent))),
                 shape = RoundedCornerShape(12.dp)
             )
             .padding(16.dp)
     ) {
-        // Draw dashed border manually
         Canvas(modifier = Modifier.matchParentSize()) {
             drawRoundRect(
                 color = accent.copy(alpha = 0.4f),

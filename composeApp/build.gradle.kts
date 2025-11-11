@@ -42,6 +42,8 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.kotlinx.datetime)
             implementation("network.chaintech:cmpcharts:1.0.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1")
+
 
         }
         commonTest.dependencies {
