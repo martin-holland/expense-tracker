@@ -12,15 +12,17 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.expensetracker.data.database.AndroidDatabaseContext
 import androidx.core.content.ContextCompat
 import com.example.theme.com.example.expensetracker.ThemeProvider
 
 class MainActivity : ComponentActivity() {
-
-
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+
+        // Initialize database context for Android
+        AndroidDatabaseContext.init(this)
         //create a logger instance
 //        AndroidLogcatLogger.installOnDebuggableApp(this, minPriority = VERBOSE)
 
