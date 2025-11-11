@@ -4,8 +4,10 @@ package com.example.expensetracker.viewmodel
 import androidx.lifecycle.ViewModel
 import com.example.expensetracker.model.Currency
 import com.example.expensetracker.model.ThemeOption
+import com.example.expensetracker.service.getMicrophoneService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+
 
 class SettingsViewModel : ViewModel() {
 
@@ -18,10 +20,28 @@ class SettingsViewModel : ViewModel() {
     private val _selectedThemeOption = MutableStateFlow(ThemeOption.SYSTEM)
     val selectedThemeOption: StateFlow<ThemeOption> = _selectedThemeOption
 
-    fun toggleVoiceInput(enabled: Boolean) {
-        _isVoiceInputEnabled.value = enabled
+    private val _hasMicrophonePermission = MutableStateFlow(false)
+    val hasMicrophonePermission: StateFlow<Boolean> = _hasMicrophonePermission
+
+    fun checkMicrophonePermission() {
+        _hasMicrophonePermission.value = getMicrophoneService().hasMicrophonePermission()
+        println("🔊 ViewModel - Microphone permission: ${_hasMicrophonePermission.value}")
+
+        if (_hasMicrophonePermission.value) {
+            _isVoiceInputEnabled.value = true
+            println("🔊 Auto-enabling voice input (permission granted)")
+        }
     }
 
+
+    fun toggleVoiceInput(enabled: Boolean) {
+        if (enabled && !_hasMicrophonePermission.value) {
+            println("🔊 No permission - requesting microphone access")
+            getMicrophoneService().requestMicrophonePermission()
+            return
+        }
+        _isVoiceInputEnabled.value = enabled
+    }
     fun setCurrency(currency: Currency) {
         _selectedCurrency.value = currency
     }
