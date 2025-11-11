@@ -118,8 +118,31 @@ class ExchangeRateRepository private constructor(
     }
     
     /**
+     * Checks if an exchange rate entity is stale
+     * 
+     * @param entity The exchange rate entity to check
+     * @return Pair of (isStale: Boolean, daysOld: Int). Returns null if timestamp is invalid
+     */
+    private fun isRateStale(entity: ExchangeRateEntity): Pair<Boolean, Int>? {
+        return try {
+            val lastUpdated = LocalDateTime.parse(entity.lastUpdated)
+            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+            val daysDiff = (now.date.toEpochDays() - lastUpdated.date.toEpochDays()).toInt()
+            val isStale = daysDiff >= 7 // Consider stale if older than 7 days
+            Pair(isStale, daysDiff)
+        } catch (e: Exception) {
+            null // Invalid timestamp
+        }
+    }
+    
+    /**
      * Gets an exchange rate synchronously
      * Uses cross-rate calculation if direct rate not available
+     * 
+     * **Offline Fallback Behavior:**
+     * - Always returns cached rates if available, even if stale
+     * - Only returns null if no cache exists at all
+     * - Logs warnings when using stale rates (>7 days old)
      * 
      * This method tries multiple strategies:
      * 1. Direct rate lookup (baseCurrency -> targetCurrency)
@@ -130,7 +153,7 @@ class ExchangeRateRepository private constructor(
      * @param baseCurrency Base currency
      * @param targetCurrency Target currency
      * @param date Optional date for historical rates. If null, uses latest rate
-     * @return The exchange rate, or null if unavailable
+     * @return The exchange rate, or null if no cache exists at all
      */
     suspend fun getExchangeRateSync(
         baseCurrency: Currency,
@@ -157,6 +180,14 @@ class ExchangeRateRepository private constructor(
         }
         
         if (directRate != null) {
+            // Check if rate is stale and log warning
+            val staleInfo = isRateStale(directRate)
+            staleInfo?.let { (isStale, daysOld) ->
+                if (isStale) {
+                    println("WARNING: Using stale exchange rate for ${baseCurrency.code} -> ${targetCurrency.code}: $daysOld days old")
+                }
+            }
+            // Always return cached rate, even if stale (offline fallback)
             return directRate.rate
         }
         
@@ -173,6 +204,14 @@ class ExchangeRateRepository private constructor(
         }
         
         if (reverseRate != null && reverseRate.rate != 0.0) {
+            // Check if rate is stale and log warning
+            val staleInfo = isRateStale(reverseRate)
+            staleInfo?.let { (isStale, daysOld) ->
+                if (isStale) {
+                    println("WARNING: Using stale reverse exchange rate for ${targetCurrency.code} -> ${baseCurrency.code}: $daysOld days old")
+                }
+            }
+            // Always return cached rate, even if stale (offline fallback)
             return 1.0 / reverseRate.rate
         }
         
@@ -200,6 +239,20 @@ class ExchangeRateRepository private constructor(
             }
             
             if (rate1 != null && rate2 != null && rate1.rate != 0.0) {
+                // Check if rates are stale and log warnings
+                val staleInfo1 = isRateStale(rate1)
+                val staleInfo2 = isRateStale(rate2)
+                staleInfo1?.let { (isStale, daysOld) ->
+                    if (isStale) {
+                        println("WARNING: Using stale cross-rate (via ${userBaseCurrency.code}) for ${userBaseCurrency.code} -> ${baseCurrency.code}: $daysOld days old")
+                    }
+                }
+                staleInfo2?.let { (isStale, daysOld) ->
+                    if (isStale) {
+                        println("WARNING: Using stale cross-rate (via ${userBaseCurrency.code}) for ${userBaseCurrency.code} -> ${targetCurrency.code}: $daysOld days old")
+                    }
+                }
+                // Always return cached rate, even if stale (offline fallback)
                 // Calculate: baseCurrency -> targetCurrency = (userBase -> target) / (userBase -> base)
                 return rate2.rate / rate1.rate
             }
@@ -238,6 +291,20 @@ class ExchangeRateRepository private constructor(
             }
             
             if (rate1 != null && rate2 != null && rate1.rate != 0.0) {
+                // Check if rates are stale and log warnings
+                val staleInfo1 = isRateStale(rate1)
+                val staleInfo2 = isRateStale(rate2)
+                staleInfo1?.let { (isStale, daysOld) ->
+                    if (isStale) {
+                        println("WARNING: Using stale cross-rate (via $availableBase) for $availableBase -> ${baseCurrency.code}: $daysOld days old")
+                    }
+                }
+                staleInfo2?.let { (isStale, daysOld) ->
+                    if (isStale) {
+                        println("WARNING: Using stale cross-rate (via $availableBase) for $availableBase -> ${targetCurrency.code}: $daysOld days old")
+                    }
+                }
+                // Always return cached rate, even if stale (offline fallback)
                 // Calculate: baseCurrency -> targetCurrency = (availableBase -> target) / (availableBase -> base)
                 return rate2.rate / rate1.rate
             }

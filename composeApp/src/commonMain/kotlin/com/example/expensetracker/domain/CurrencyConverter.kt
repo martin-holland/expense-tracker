@@ -145,11 +145,16 @@ class CurrencyConverter private constructor(
      * 3. Use cross-rate calculation via base currency (optimized)
      * 4. Fallback to reverse rate if available
      * 
+     * **Offline Fallback:**
+     * - Returns null only if no cached rate exists at all
+     * - Uses stale cached rates (>7 days old) with warning logs
+     * - Gracefully degrades: returns null instead of failing
+     * 
      * @param amount The amount to convert
      * @param fromCurrency Source currency
      * @param toCurrency Target currency
      * @param date Optional date for historical rates. If null, uses latest rate
-     * @return The converted amount, or null if conversion failed
+     * @return The converted amount, or null if no cached rate exists (offline fallback)
      */
     suspend fun convertAmountSync(
         amount: Double,
@@ -162,18 +167,28 @@ class CurrencyConverter private constructor(
             return amount
         }
         
-        // Get exchange rate (this already handles cross-rate calculation)
+        // Get exchange rate (this already handles cross-rate calculation and stale rate detection)
         val rate = exchangeRateRepository.getExchangeRateSync(fromCurrency, toCurrency, date)
         
-        return rate?.let { 
-            val converted = amount * it
+        // If no rate found at all (no cache exists), return null for graceful degradation
+        if (rate == null) {
+            println("INFO: No cached exchange rate available for ${fromCurrency.code} -> ${toCurrency.code}. Using original amount.")
+            return null
+        }
+        
+        return try {
+            val converted = amount * rate
             
             // Handle division by zero edge case (shouldn't happen, but safety check)
-            if (it.isNaN() || it.isInfinite()) {
+            if (rate.isNaN() || rate.isInfinite() || converted.isNaN() || converted.isInfinite()) {
+                println("WARNING: Invalid exchange rate for ${fromCurrency.code} -> ${toCurrency.code}. Using original amount.")
                 null
             } else {
                 converted
             }
+        } catch (e: Exception) {
+            println("ERROR: Failed to convert ${fromCurrency.code} -> ${toCurrency.code}: ${e.message}. Using original amount.")
+            null
         }
     }
     
