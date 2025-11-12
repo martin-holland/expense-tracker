@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -28,27 +29,42 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.expensetracker.model.Currency
 import com.example.expensetracker.model.Expense
 import com.example.expensetracker.model.ExpenseCategory
+import com.example.expensetracker.services.decodeByteArrayToImageBitmap
+import com.example.expensetracker.services.getCameraService
 import com.example.expensetracker.viewmodel.DashBoardViewModel
 import com.example.theme.com.example.expensetracker.LocalAppColors
+import io.github.aakira.napier.Napier
+import kotlinx.coroutines.launch
 
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Clock
@@ -94,6 +110,7 @@ fun DashboardScreen(viewModel: DashBoardViewModel = viewModel { DashBoardViewMod
     ) {
         Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             Header()
+            CameraScreen()
             MonthlySpendCard(totalSpent, currentMonth, chosenCurrenty)
 
             ExpenseBreakdownCard(categorySumMap)
@@ -160,6 +177,142 @@ private fun Header() {
         }
     }
 }
+
+@Composable
+fun CameraScreen() {
+    val cameraService = getCameraService()
+    var photoData by remember { mutableStateOf<ByteArray?>(null) }
+    var imageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    var isProcessing by remember { mutableStateOf(false) }
+    var isCameraOn by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    // Convert byte array to ImageBitmap when photo data changes
+    LaunchedEffect(photoData) {
+        photoData?.let { bytes ->
+            try {
+                imageBitmap = decodeByteArrayToImageBitmap(bytes)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+            ?: run { imageBitmap = null }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+
+        if (isCameraOn) {
+            Card(
+                modifier = Modifier.fillMaxWidth().height(300.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+            ) {
+
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    when {
+                        imageBitmap != null -> {
+                            Image(
+                                bitmap = imageBitmap!!,
+                                contentDescription = "Captured photo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit
+                            )
+                        }
+                        photoData != null -> {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text("✅", style = MaterialTheme.typography.displayMedium)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Photo captured!",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    "(${photoData!!.size} bytes)",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                        else -> {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text("📸", style = MaterialTheme.typography.displayLarge)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("No photo taken yet", style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    "Tap 'Take Photo' to start",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = {
+                    scope.launch {
+                        isProcessing = true
+                        isCameraOn = true
+                        photoData = cameraService.takePhoto()
+                        isProcessing = false
+                    }
+                },
+                enabled = !isProcessing
+            ) {
+                if (isProcessing) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                } else {
+                    Text("📷")
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Take Photo")
+            }
+
+            Button(
+                onClick = { photoData = null },
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    )
+            ) {
+                Text("🗑️")
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Clear", color = Color.Black)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text =
+                "Camera Permission: ${if (cameraService.hasCameraPermission()) "Granted" else "Not Granted"}",
+            style = MaterialTheme.typography.bodySmall,
+            color =
+                if (cameraService.hasCameraPermission()) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.error
+        )
+    }
+}
+
 
 @Composable
 fun MonthlySpendCard(spend: Double, month: String, currency: Currency) {

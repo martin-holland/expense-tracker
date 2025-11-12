@@ -11,10 +11,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraSelector
+import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.example.expensetracker.services.AndroidCameraService
 import com.example.expensetracker.services.initializeNapier
 import com.example.theme.com.example.expensetracker.ThemeProvider
 import io.github.aakira.napier.Napier
@@ -24,6 +27,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        appContext = this
 
         initializeNapier()
         Napier.d("App initialized", tag = "DDD")
@@ -84,21 +88,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun initializeCamera() {
+        try {
+            val cameraService = AndroidCameraService.getInstance(this)
+            // Start camera in coroutine
+            lifecycleScope.launch { cameraService.startCamera(this@MainActivity) }
+        } catch (e: Exception) {
+            println("❌ Error initializing camera: ${e.message}")
+        }
+    }
     companion object {
         // TODO: Consider using dependency injection or Application class instead of global context
         // This pattern works but is not ideal for testability and separation of concerns
         lateinit var appContext: Context
-    }
-
-    private fun initializeCamera() {
-        try {
-//            val cameraService = AndroidCameraService.getInstance(this)
-            Napier.d("Camera initialize", tag = "DDD")
-            // Start camera in coroutine
-//            lifecycleScope.launch { cameraService.startCamera(this@MainActivity) }
-        } catch (e: Exception) {
-            println("❌ Error initializing camera: ${e.message}")
-        }
     }
 
 }
