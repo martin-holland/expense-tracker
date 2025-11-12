@@ -28,6 +28,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.expensetracker.model.Currency
+import com.example.expensetracker.model.ExpenseCategory
 import com.example.expensetracker.view.components.camera.CameraScreen
 import com.example.expensetracker.viewmodel.AddExpenseViewModel
 import com.example.theme.com.example.expensetracker.AppColors
@@ -47,10 +49,21 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
     val category = viewModel.category
     val note = viewModel.note
     val date = viewModel.date
+    val errorMessage = viewModel.errorMessage
+    val isSaving = viewModel.isSaving
+    val saveSuccess = viewModel.saveSuccess
 
     var showDialog by remember { mutableStateOf(false) }
     var showCamera by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState()
+
+    // Show success message and reset after a delay
+    LaunchedEffect(saveSuccess) {
+        if (saveSuccess) {
+            kotlinx.coroutines.delay(2000)
+            viewModel.resetSuccessState()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -96,26 +109,32 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
 
         // === Currency Section ===
         SectionCard(title = "Currency") {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                listOf("USD", "EUR", "GBP").forEach { curr ->
-                    val symbol = when (curr) {
-                        "USD" -> "$"
-                        "EUR" -> "€"
-                        "GBP" -> "£"
-                        else -> curr
-                    }
-
-                    Button(
-                        onClick = { viewModel.onCurrencySelected(curr) },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (currency == curr) AppColors.primary else Color.White,
-                            contentColor = if (currency == curr) AppColors.primaryForeground else AppColors.foreground
-                        ),
-                        shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, AppColors.border),
-                        modifier = Modifier.weight(1f)
+            // Display all currencies in a scrollable grid
+            val allCurrencies = Currency.values().toList()
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                allCurrencies.chunked(3).forEach { rowCurrencies ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("$symbol $curr", fontWeight = FontWeight.Medium)
+                        rowCurrencies.forEach { curr ->
+                            Button(
+                                onClick = { viewModel.onCurrencySelected(curr) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (currency == curr) AppColors.primary else Color.White,
+                                    contentColor = if (currency == curr) AppColors.primaryForeground else AppColors.foreground
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, AppColors.border),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("${curr.symbol} ${curr.code}", fontWeight = FontWeight.Medium, fontSize = 12.sp)
+                            }
+                        }
+                        // Fill remaining space if row has less than 3 items
+                        repeat(3 - rowCurrencies.size) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
                 }
             }
@@ -123,16 +142,10 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
 
         // === Amount Section ===
         SectionCard(title = "Amount") {
-            val symbol = when (currency) {
-                "USD" -> "$"
-                "EUR" -> "€"
-                "GBP" -> "£"
-                else -> currency
-            }
             OutlinedTextField(
                 value = amount,
                 onValueChange = { viewModel.onAmountChanged(it) },
-                placeholder = { Text("$symbol 0.00", color = AppColors.mutedForeground) },
+                placeholder = { Text("${currency.symbol} 0.00", color = AppColors.mutedForeground) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -146,24 +159,24 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
         // === Category Section ===
         SectionCard(title = "Category") {
             val categories = listOf(
-                Triple("Food", Icons.Default.Fastfood, Color(0xFFFFEAEA)),
-                Triple("Travel", Icons.Default.DirectionsCar, Color(0xFFE5F8FA)),
-                Triple("Utilities", Icons.Default.ElectricBolt, Color(0xFFEAF9EE)),
-                Triple("Other", Icons.Default.MoreHoriz, Color(0xFFFFF8E8))
+                Triple(ExpenseCategory.FOOD, Icons.Default.Fastfood, Color(0xFFFFEAEA)),
+                Triple(ExpenseCategory.TRAVEL, Icons.Default.DirectionsCar, Color(0xFFE5F8FA)),
+                Triple(ExpenseCategory.UTILITIES, Icons.Default.ElectricBolt, Color(0xFFEAF9EE)),
+                Triple(ExpenseCategory.OTHER, Icons.Default.MoreHoriz, Color(0xFFFFF8E8))
             )
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 categories.chunked(2).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        row.forEach { (label, icon, bgColor) ->
+                        row.forEach { (cat, icon, bgColor) ->
                             Card(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clickable { viewModel.onCategorySelected(label) },
+                                    .clickable { viewModel.onCategorySelected(cat) },
                                 shape = RoundedCornerShape(12.dp),
                                 border = BorderStroke(
                                     1.dp,
-                                    if (category == label) accentGreen else AppColors.border
+                                    if (category == cat) accentGreen else AppColors.border
                                 ),
                                 colors = CardDefaults.cardColors(containerColor = Color.White)
                             ) {
@@ -180,13 +193,13 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
                                     ) {
                                         Icon(
                                             icon,
-                                            contentDescription = label,
+                                            contentDescription = cat.displayName,
                                             tint = accentGreen,
                                             modifier = Modifier.size(22.dp)
                                         )
                                     }
                                     Spacer(Modifier.height(6.dp))
-                                    Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                                    Text(cat.displayName, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                                 }
                             }
                         }
@@ -255,7 +268,9 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
         }
 
         // Camera Section
-        if (showCamera)CameraScreen()
+        if (showCamera) {
+            CameraScreen()
+        }
 
 
         // === Quick Input Section ===
@@ -298,18 +313,57 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
         Spacer(Modifier.height(40.dp))
         Button(
             onClick = { viewModel.saveExpense() },
+            enabled = !isSaving,
             colors = ButtonDefaults.buttonColors(containerColor = accentGreen),
             shape = RoundedCornerShape(10.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(55.dp)
         ) {
-            Text("Save Expense", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            if (isSaving) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("Saving...", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            } else {
+                Text("Save Expense", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            }
         }
 
-        viewModel.errorMessage?.let {
+        // Success message
+        if (saveSuccess) {
             Spacer(Modifier.height(10.dp))
-            Text(it, color = Color.Red, fontSize = 14.sp)
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    "✓ Expense saved successfully!",
+                    color = Color(0xFF2E7D32),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+        }
+
+        // Error message
+        errorMessage?.let {
+            Spacer(Modifier.height(10.dp))
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    it,
+                    color = Color(0xFFC62828),
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
         }
     }
 }
