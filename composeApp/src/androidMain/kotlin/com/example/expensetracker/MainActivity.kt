@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-
+    
     // permission request popup that should happen at the start of app
     // should also implement to popup if microphone disabled and click in stgs
     private fun requestNecessaryPermissions() {
