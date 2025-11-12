@@ -6,9 +6,17 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.expensetracker.data.repository.ExpenseRepository
+import com.example.expensetracker.data.repository.SettingsRepository
+import com.example.expensetracker.domain.CurrencyConverter
 import com.example.expensetracker.model.Expense
 import com.example.expensetracker.model.ExpenseCategory
+import com.example.expensetracker.model.ExpenseWithConversion
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDateTime
 
@@ -17,15 +25,26 @@ import kotlinx.datetime.LocalDateTime
  * pattern to access data from Room database
  */
 class ExpenseHistoryViewModel(
-        private val repository: ExpenseRepository = ExpenseRepository.getInstance()
+        private val repository: ExpenseRepository = ExpenseRepository.getInstance(),
+        private val currencyConverter: CurrencyConverter = CurrencyConverter.getInstance(),
+        private val settingsRepository: SettingsRepository = SettingsRepository.getInstance()
 ) : ViewModel() {
 
     // UI State
     var uiState by mutableStateOf(ExpenseHistoryUiState())
         private set
 
+    // Converted expenses with currency conversion
+    private val _convertedExpenses = MutableStateFlow<List<ExpenseWithConversion>>(emptyList())
+    val convertedExpenses: StateFlow<List<ExpenseWithConversion>> = _convertedExpenses.asStateFlow()
+
+    // Show converted amounts toggle
+    private val _showConvertedAmounts = MutableStateFlow<Boolean>(true)
+    val showConvertedAmounts: StateFlow<Boolean> = _showConvertedAmounts.asStateFlow()
+
     init {
         loadExpenses()
+        observeBaseCurrency()
     }
 
     /**
@@ -45,11 +64,60 @@ class ExpenseHistoryViewModel(
                                         isLoading = false,
                                         error = exception.message
                                 )
+                        _convertedExpenses.value = emptyList()
                     }
                     .collect { expenses ->
                         uiState = uiState.copy(expenses = expenses, isLoading = false, error = null)
+                        // Convert expenses when list changes
+                        convertExpenses(expenses)
                     }
         }
+    }
+
+    /** Observes base currency changes and converts expenses */
+    private fun observeBaseCurrency() {
+        settingsRepository
+                .getBaseCurrency()
+                .onEach { baseCurrency ->
+                    // Reconvert expenses when base currency changes
+                    convertExpenses()
+                }
+                .catch { e -> println("Error observing base currency: ${e.message}") }
+                .launchIn(viewModelScope)
+    }
+
+    /** Converts expenses to base currency */
+    private suspend fun convertExpenses(expenses: List<Expense>? = null) {
+        val expensesToConvert = expenses ?: uiState.expenses
+        val baseCurrency = settingsRepository.getBaseCurrencySync()
+
+        val converted =
+                expensesToConvert.map { expense ->
+                    val convertedAmount =
+                            if (expense.currency == baseCurrency) {
+                                expense.amount
+                            } else {
+                                currencyConverter.convertAmountSync(
+                                        amount = expense.amount,
+                                        fromCurrency = expense.currency,
+                                        toCurrency = baseCurrency,
+                                        date = expense.date
+                                )
+                            }
+
+                    ExpenseWithConversion(
+                            expense = expense,
+                            convertedAmount = convertedAmount,
+                            baseCurrency = baseCurrency
+                    )
+                }
+
+        _convertedExpenses.value = converted
+    }
+
+    /** Toggles showing converted amounts */
+    fun toggleShowConvertedAmounts() {
+        _showConvertedAmounts.value = !_showConvertedAmounts.value
     }
 
     /**
@@ -169,6 +237,17 @@ class ExpenseHistoryViewModel(
 
         // Sort by date, newest first
         return filtered.sortedByDescending { it.date }
+    }
+
+    /**
+     * Gets filtered expenses with conversions based on current filter criteria Returns
+     * ExpenseWithConversion list that matches the filtered expenses
+     */
+    fun getFilteredExpensesWithConversion(): List<ExpenseWithConversion> {
+        val filteredExpenseIds = getFilteredExpenses().map { it.id }.toSet()
+        return _convertedExpenses.value
+                .filter { it.expense.id in filteredExpenseIds }
+                .sortedByDescending { it.expense.date }
     }
 }
 

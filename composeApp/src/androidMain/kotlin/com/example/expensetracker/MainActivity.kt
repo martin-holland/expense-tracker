@@ -13,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.expensetracker.data.database.AndroidDatabaseContext
+import com.example.expensetracker.data.worker.ExchangeRateRefreshWorker
 import androidx.core.content.ContextCompat
 import com.example.theme.com.example.expensetracker.ThemeProvider
 
@@ -23,6 +24,27 @@ class MainActivity : ComponentActivity() {
 
         // Initialize database context for Android
         AndroidDatabaseContext.init(this)
+        
+        // Initialize database early to ensure migrations run
+        // This triggers database creation and applies migrations if needed
+        android.util.Log.d("MainActivity", "Initializing database...")
+        try {
+            val database = com.example.expensetracker.data.database.getRoomDatabase()
+            // Access a DAO to ensure database is fully initialized
+            database.settingsDao()
+            android.util.Log.d("MainActivity", "Database initialized successfully")
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Error initializing database", e)
+        }
+        
+        // Initialize and schedule background exchange rate refresh
+        try {
+            ExchangeRateRefreshWorker.initialize(this)
+            ExchangeRateRefreshWorker.scheduleExchangeRateRefresh()
+            android.util.Log.d("MainActivity", "Exchange rate refresh worker scheduled")
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Error scheduling exchange rate refresh", e)
+        }
         //create a logger instance
 //        AndroidLogcatLogger.installOnDebuggableApp(this, minPriority = VERBOSE)
 
