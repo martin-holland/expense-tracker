@@ -273,13 +273,25 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
                     accent = accentGreen,
                     action = {}
                 )
-                QuickInputItem(
+                if (!showCamera){
+                    QuickInputItem(
                     label = "Receipt",
                     subtext = "Tap to capture",
                     icon = Icons.Default.CameraAlt,
                     accent = accentGreen,
-                    action = {showCamera = !showCamera}
+                    action = {showCamera = true}
                 )
+                } else {
+                    QuickInputItem(
+                        label = "Receipt",
+                        subtext = "Tap to close",
+                        icon = Icons.Default.CameraAlt,
+                        accent = accentGreen,
+                        action = {showCamera = false}
+                    )
+
+
+                }
             }
         }
 
