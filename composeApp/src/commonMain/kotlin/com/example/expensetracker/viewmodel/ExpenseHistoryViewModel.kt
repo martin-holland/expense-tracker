@@ -4,32 +4,120 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import com.example.expensetracker.model.Currency
+import androidx.lifecycle.viewModelScope
+import com.example.expensetracker.data.repository.ExpenseRepository
+import com.example.expensetracker.data.repository.SettingsRepository
+import com.example.expensetracker.domain.CurrencyConverter
 import com.example.expensetracker.model.Expense
 import com.example.expensetracker.model.ExpenseCategory
+import com.example.expensetracker.model.ExpenseWithConversion
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDateTime
 
 /**
- * ViewModel for managing Expense History state
- * Follows MVVM architecture pattern
+ * ViewModel for managing Expense History state Follows MVVM architecture pattern Uses Repository
+ * pattern to access data from Room database
  */
-class ExpenseHistoryViewModel : ViewModel() {
+class ExpenseHistoryViewModel(
+        private val repository: ExpenseRepository = ExpenseRepository.getInstance(),
+        private val currencyConverter: CurrencyConverter = CurrencyConverter.getInstance(),
+        private val settingsRepository: SettingsRepository = SettingsRepository.getInstance()
+) : ViewModel() {
 
     // UI State
     var uiState by mutableStateOf(ExpenseHistoryUiState())
         private set
 
+    // Converted expenses with currency conversion
+    private val _convertedExpenses = MutableStateFlow<List<ExpenseWithConversion>>(emptyList())
+    val convertedExpenses: StateFlow<List<ExpenseWithConversion>> = _convertedExpenses.asStateFlow()
+
+    // Show converted amounts toggle
+    private val _showConvertedAmounts = MutableStateFlow<Boolean>(true)
+    val showConvertedAmounts: StateFlow<Boolean> = _showConvertedAmounts.asStateFlow()
+
     init {
-        loadMockData()
+        loadExpenses()
+        observeBaseCurrency()
     }
 
     /**
-     * Loads mock expense data for testing UI
-     * TODO: Replace with actual data source (Room DB or API) in future implementation
+     * Loads expenses from the repository Observes the database and updates UI state when data
+     * changes
      */
-    private fun loadMockData() {
-        val mockExpenses = generateMockExpenses()
-        uiState = uiState.copy(expenses = mockExpenses)
+    private fun loadExpenses() {
+        viewModelScope.launch {
+            repository
+                    .getAllExpenses()
+                    .catch { exception ->
+                        // Handle error - for now just log it
+                        println("Error loading expenses: ${exception.message}")
+                        uiState =
+                                uiState.copy(
+                                        expenses = emptyList(),
+                                        isLoading = false,
+                                        error = exception.message
+                                )
+                        _convertedExpenses.value = emptyList()
+                    }
+                    .collect { expenses ->
+                        uiState = uiState.copy(expenses = expenses, isLoading = false, error = null)
+                        // Convert expenses when list changes
+                        convertExpenses(expenses)
+                    }
+        }
+    }
+
+    /** Observes base currency changes and converts expenses */
+    private fun observeBaseCurrency() {
+        settingsRepository
+                .getBaseCurrency()
+                .onEach { baseCurrency ->
+                    // Reconvert expenses when base currency changes
+                    convertExpenses()
+                }
+                .catch { e -> println("Error observing base currency: ${e.message}") }
+                .launchIn(viewModelScope)
+    }
+
+    /** Converts expenses to base currency */
+    private suspend fun convertExpenses(expenses: List<Expense>? = null) {
+        val expensesToConvert = expenses ?: uiState.expenses
+        val baseCurrency = settingsRepository.getBaseCurrencySync()
+
+        val converted =
+                expensesToConvert.map { expense ->
+                    val convertedAmount =
+                            if (expense.currency == baseCurrency) {
+                                expense.amount
+                            } else {
+                                currencyConverter.convertAmountSync(
+                                        amount = expense.amount,
+                                        fromCurrency = expense.currency,
+                                        toCurrency = baseCurrency,
+                                        date = expense.date
+                                )
+                            }
+
+                    ExpenseWithConversion(
+                            expense = expense,
+                            convertedAmount = convertedAmount,
+                            baseCurrency = baseCurrency
+                    )
+                }
+
+        _convertedExpenses.value = converted
+    }
+
+    /** Toggles showing converted amounts */
+    fun toggleShowConvertedAmounts() {
+        _showConvertedAmounts.value = !_showConvertedAmounts.value
     }
 
     /**
@@ -39,38 +127,29 @@ class ExpenseHistoryViewModel : ViewModel() {
      * @param amountRange Amount range to filter by (null = all amounts)
      */
     fun applyFilters(
-        categories: Set<ExpenseCategory>? = null,
-        dateRange: Pair<LocalDateTime, LocalDateTime>? = null,
-        amountRange: Pair<Double, Double>? = null
+            categories: Set<ExpenseCategory>? = null,
+            dateRange: Pair<LocalDateTime, LocalDateTime>? = null,
+            amountRange: Pair<Double, Double>? = null
     ) {
-        uiState = uiState.copy(
-            selectedCategories = categories,
-            dateRange = dateRange,
-            amountRange = amountRange
-        )
+        uiState =
+                uiState.copy(
+                        selectedCategories = categories,
+                        dateRange = dateRange,
+                        amountRange = amountRange
+                )
     }
 
-    /**
-     * Clears all active filters
-     */
+    /** Clears all active filters */
     fun clearFilters() {
-        uiState = uiState.copy(
-            selectedCategories = null,
-            dateRange = null,
-            amountRange = null
-        )
+        uiState = uiState.copy(selectedCategories = null, dateRange = null, amountRange = null)
     }
 
-    /**
-     * Shows the filter dialog
-     */
+    /** Shows the filter dialog */
     fun showFilterDialog() {
         uiState = uiState.copy(showFilterDialog = true)
     }
 
-    /**
-     * Hides the filter dialog
-     */
+    /** Hides the filter dialog */
     fun hideFilterDialog() {
         uiState = uiState.copy(showFilterDialog = false)
     }
@@ -80,37 +159,29 @@ class ExpenseHistoryViewModel : ViewModel() {
      * @param expense The expense to delete
      */
     fun requestDeleteExpense(expense: Expense) {
-        uiState = uiState.copy(
-            expenseToDelete = expense,
-            showDeleteDialog = true
-        )
+        uiState = uiState.copy(expenseToDelete = expense, showDeleteDialog = true)
     }
 
-    /**
-     * Confirms and executes expense deletion
-     * TODO: Implement actual database deletion in future implementation
-     */
+    /** Confirms and executes expense deletion Deletes the expense from the database */
     fun confirmDeleteExpense() {
         val expenseToDelete = uiState.expenseToDelete
         if (expenseToDelete != null) {
-            val updatedExpenses = uiState.expenses.filter { it.id != expenseToDelete.id }
-            uiState = uiState.copy(
-                expenses = updatedExpenses,
-                expenseToDelete = null,
-                showDeleteDialog = false
-            )
-            // TODO: Call repository/database to persist deletion
+            viewModelScope.launch {
+                try {
+                    repository.deleteExpense(expenseToDelete)
+                    // UI will update automatically through the Flow
+                    uiState = uiState.copy(expenseToDelete = null, showDeleteDialog = false)
+                } catch (e: Exception) {
+                    println("Error deleting expense: ${e.message}")
+                    uiState = uiState.copy(error = e.message)
+                }
+            }
         }
     }
 
-    /**
-     * Cancels expense deletion
-     */
+    /** Cancels expense deletion */
     fun cancelDeleteExpense() {
-        uiState = uiState.copy(
-            expenseToDelete = null,
-            showDeleteDialog = false
-        )
+        uiState = uiState.copy(expenseToDelete = null, showDeleteDialog = false)
     }
 
     /**
@@ -118,45 +189,32 @@ class ExpenseHistoryViewModel : ViewModel() {
      * @param expense The expense to edit
      */
     fun openEditDialog(expense: Expense) {
-        uiState = uiState.copy(
-            expenseToEdit = expense,
-            showEditDialog = true
-        )
+        uiState = uiState.copy(expenseToEdit = expense, showEditDialog = true)
     }
 
-    /**
-     * Closes the edit dialog
-     */
+    /** Closes the edit dialog */
     fun closeEditDialog() {
-        uiState = uiState.copy(
-            expenseToEdit = null,
-            showEditDialog = false
-        )
+        uiState = uiState.copy(expenseToEdit = null, showEditDialog = false)
     }
 
     /**
      * Saves or updates an expense
-     * @param expense The expense to save
-     * TODO: Implement actual database save in future implementation
+     * @param expense The expense to save Persists changes to the database
      */
     fun saveExpense(expense: Expense) {
-        val existingIndex = uiState.expenses.indexOfFirst { it.id == expense.id }
-        val updatedExpenses = if (existingIndex >= 0) {
-            // Update existing expense
-            uiState.expenses.toMutableList().apply {
-                set(existingIndex, expense)
+        viewModelScope.launch {
+            try {
+                repository.insertExpense(expense)
+                // UI will update automatically through the Flow
+                closeEditDialog()
+            } catch (e: Exception) {
+                println("Error saving expense: ${e.message}")
+                uiState = uiState.copy(error = e.message)
             }
-        } else {
-            // Add new expense
-            uiState.expenses + expense
         }
-        uiState = uiState.copy(expenses = updatedExpenses)
-        // TODO: Call repository/database to persist changes
     }
 
-    /**
-     * Gets filtered expenses based on current filter criteria
-     */
+    /** Gets filtered expenses based on current filter criteria */
     fun getFilteredExpenses(): List<Expense> {
         var filtered = uiState.expenses
 
@@ -182,99 +240,28 @@ class ExpenseHistoryViewModel : ViewModel() {
     }
 
     /**
-     * Generates mock expense data for testing
-     * TODO: Remove when actual data source is implemented
+     * Gets filtered expenses with conversions based on current filter criteria Returns
+     * ExpenseWithConversion list that matches the filtered expenses
      */
-    private fun generateMockExpenses(): List<Expense> {
-        // Create static dates for mock data (no Clock.System needed for iOS compatibility)
-        val nov1 = LocalDateTime(2024, 11, 1, 12, 0)
-        val oct31 = LocalDateTime(2024, 10, 31, 14, 30)
-        val oct30 = LocalDateTime(2024, 10, 30, 10, 15)
-        val oct29 = LocalDateTime(2024, 10, 29, 16, 45)
-        val oct28 = LocalDateTime(2024, 10, 28, 9, 0)
-
-        return listOf(
-            Expense(
-                id = "1",
-                category = ExpenseCategory.FOOD,
-                description = "Lunch at restaurant",
-                amount = 45.50,
-                currency = Currency.USD,
-                date = nov1
-            ),
-            Expense(
-                id = "2",
-                category = ExpenseCategory.TRAVEL,
-                description = "Gas station",
-                amount = 120.00,
-                currency = Currency.USD,
-                date = nov1
-            ),
-            Expense(
-                id = "3",
-                category = ExpenseCategory.FOOD,
-                description = "Coffee shop",
-                amount = 15.99,
-                currency = Currency.USD,
-                date = oct31
-            ),
-            Expense(
-                id = "4",
-                category = ExpenseCategory.UTILITIES,
-                description = "Electricity bill",
-                amount = 85.00,
-                currency = Currency.USD,
-                date = oct31
-            ),
-            Expense(
-                id = "5",
-                category = ExpenseCategory.FOOD,
-                description = "Grocery shopping",
-                amount = 32.50,
-                currency = Currency.USD,
-                date = oct30
-            ),
-            Expense(
-                id = "6",
-                category = ExpenseCategory.TRAVEL,
-                description = "Uber ride",
-                amount = 50.00,
-                currency = Currency.USD,
-                date = oct30
-            ),
-            Expense(
-                id = "7",
-                category = ExpenseCategory.OTHER,
-                description = "Online subscription",
-                amount = 25.99,
-                currency = Currency.EUR,
-                date = oct29
-            ),
-            Expense(
-                id = "8",
-                category = ExpenseCategory.UTILITIES,
-                description = "Internet bill",
-                amount = 180.00,
-                currency = Currency.USD,
-                date = oct28
-            )
-        )
+    fun getFilteredExpensesWithConversion(): List<ExpenseWithConversion> {
+        val filteredExpenseIds = getFilteredExpenses().map { it.id }.toSet()
+        return _convertedExpenses.value
+                .filter { it.expense.id in filteredExpenseIds }
+                .sortedByDescending { it.expense.date }
     }
 }
 
-/**
- * UI State for Expense History screen
- */
+/** UI State for Expense History screen */
 data class ExpenseHistoryUiState(
-    val expenses: List<Expense> = emptyList(),
-    val selectedCategories: Set<ExpenseCategory>? = null,
-    val dateRange: Pair<LocalDateTime, LocalDateTime>? = null,
-    val amountRange: Pair<Double, Double>? = null,
-    val showFilterDialog: Boolean = false,
-    val showDeleteDialog: Boolean = false,
-    val showEditDialog: Boolean = false,
-    val expenseToDelete: Expense? = null,
-    val expenseToEdit: Expense? = null
+        val expenses: List<Expense> = emptyList(),
+        val selectedCategories: Set<ExpenseCategory>? = null,
+        val dateRange: Pair<LocalDateTime, LocalDateTime>? = null,
+        val amountRange: Pair<Double, Double>? = null,
+        val showFilterDialog: Boolean = false,
+        val showDeleteDialog: Boolean = false,
+        val showEditDialog: Boolean = false,
+        val expenseToDelete: Expense? = null,
+        val expenseToEdit: Expense? = null,
+        val isLoading: Boolean = true,
+        val error: String? = null
 )
-
-

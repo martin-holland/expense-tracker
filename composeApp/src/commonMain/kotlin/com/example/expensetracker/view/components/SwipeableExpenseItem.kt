@@ -21,6 +21,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.expensetracker.model.Currency
 import com.example.expensetracker.model.Expense
 import com.example.theme.com.example.expensetracker.LocalAppColors
 import kotlinx.coroutines.launch
@@ -33,12 +34,19 @@ import kotlinx.coroutines.launch
  * @param expense The expense to display
  * @param onEdit Callback when edit is triggered
  * @param onDelete Callback when delete is triggered
+ * @param convertedAmount Optional converted amount in base currency
+ * @param baseCurrency Optional base currency for conversion display
+ * @param showConvertedAmount Whether to show the converted amount
+ * @param modifier Modifier for layout customization
  */
 @Composable
 fun SwipeableExpenseItem(
     expense: Expense,
     onEdit: (Expense) -> Unit,
     onDelete: (Expense) -> Unit,
+    convertedAmount: Double? = null,
+    baseCurrency: Currency? = null,
+    showConvertedAmount: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val appColors = LocalAppColors.current
@@ -253,13 +261,26 @@ fun SwipeableExpenseItem(
                     }
                 }
                 
-                // Amount with currency
-                Text(
-                    text = expense.getFormattedAmount(),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = appColors.foreground,
-                    fontWeight = FontWeight.SemiBold
-                )
+                // Amount with currency and optional conversion
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = expense.getFormattedAmount(),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = appColors.foreground,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    // Show converted amount if available and enabled
+                    if (showConvertedAmount && convertedAmount != null && baseCurrency != null && expense.currency != baseCurrency) {
+                        Text(
+                            text = "≈ ${baseCurrency.format(convertedAmount)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = appColors.mutedForeground
+                        )
+                    }
+                }
             }
         }
     }

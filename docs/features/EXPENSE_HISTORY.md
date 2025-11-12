@@ -4,7 +4,9 @@
 
 This document summarizes the implementation of the Expense History feature in the ExpenseTracker application following MVVM architecture and best practices.
 
-**Latest Update:** Enhanced with currency support, improved swipe gestures, comprehensive edit dialog, and collapsing toolbar. See `IMPROVEMENTS_SUMMARY.md` for detailed changelog.
+**Latest Update:** Enhanced with currency support, improved swipe gestures, comprehensive edit dialog, and collapsing toolbar.
+
+> **Note:** This feature now uses Room database for persistence. For database implementation details, see [../database/IMPLEMENTATION.md](../database/IMPLEMENTATION.md). For current database status, see [../database/STATUS.md](../database/STATUS.md).
 
 ## Folder Structure
 
@@ -114,10 +116,11 @@ The app includes 8 sample expenses across different categories and dates for tes
 
 ### High Priority
 
-1. **Database Integration**: Replace mock data with Room DB or API calls
-
-   - Located in: `ExpenseHistoryViewModel.kt`
-   - Functions: `loadMockData()`, `saveExpense()`, `confirmDeleteExpense()`
+1. **Database Integration**: ✅ **COMPLETED** - Room database is now integrated
+   
+   - See [../database/IMPLEMENTATION.md](../database/IMPLEMENTATION.md) for details
+   - All CRUD operations now persist to database
+   - Mock data replaced with database-backed data
 
 2. **Edit Screen**: Implement actual edit functionality
 
@@ -192,7 +195,7 @@ The implementation uses the existing custom theme system:
 
 ## Next Steps
 
-1. Implement Room database for data persistence
+1. ✅ ~~Implement Room database for data persistence~~ - **COMPLETED**
 2. Create expense add/edit screen
 3. Add date range picker component
 4. Add amount range slider
@@ -486,9 +489,9 @@ Currency.JPY.format(1500.0) // Returns "¥1500"
    - Use device locale for date display
    - Handle different date formats (US, EU, Asia)
 
-5. **Database Integration** (ExpenseHistoryViewModel.kt)
-   - Replace mock data with Room DB
-   - Implement save/delete persistence
+5. ✅ **Database Integration** - **COMPLETED**
+   - Room database fully integrated
+   - See [../database/IMPLEMENTATION.md](../database/IMPLEMENTATION.md) for details
 
 ---
 

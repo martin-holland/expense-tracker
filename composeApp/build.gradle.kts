@@ -7,6 +7,9 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kotlinxSerialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.room)
 }
 
 kotlin {
@@ -30,6 +33,11 @@ kotlin {
     val napierVersion = "2.7.1"
 
 
+
+    sourceSets.commonMain {
+        kotlin.srcDir("build/generated/ksp/metadata")
+    }
+
     sourceSets {
         androidMain.dependencies {
             implementation(compose.preview)
@@ -41,6 +49,8 @@ kotlin {
             implementation("androidx.camera:camera-view:${cameraxVersion}")
             implementation("androidx.camera:camera-mlkit-vision:${cameraxVersion}")
             implementation("androidx.camera:camera-extensions:${cameraxVersion}")
+            implementation(libs.ktor.client.android)
+            implementation(libs.androidx.work.runtime)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -53,6 +63,12 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(compose.materialIconsExtended)
             implementation(libs.kotlinx.datetime)
+            implementation(libs.androidx.room.runtime)
+            implementation(libs.androidx.sqlite.bundled)
+            implementation(libs.kotlinx.serialization.json)
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
             implementation("network.chaintech:cmpcharts:1.0.0")
 
             //log
@@ -64,6 +80,16 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+        }
+        val iosArm64Main by getting {
+            dependencies {
+                implementation(libs.ktor.client.darwin)
+            }
+        }
+        val iosSimulatorArm64Main by getting {
+            dependencies {
+                implementation(libs.ktor.client.darwin)
+            }
         }
     }
 }
@@ -97,5 +123,20 @@ android {
 
 dependencies {
     debugImplementation(compose.uiTooling)
+    add("kspCommonMainMetadata", libs.androidx.room.compiler)
+    add("kspAndroid", libs.androidx.room.compiler)
+    add("kspIosArm64", libs.androidx.room.compiler)
+    add("kspIosSimulatorArm64", libs.androidx.room.compiler)
 }
 
+room {
+    schemaDirectory("$projectDir/schemas")
+}
+
+// Note: Room KMP is in alpha and may have task dependency warnings
+// The implementation works correctly despite gradle validation warnings
+
+// Workaround for Room KMP task dependency issue
+tasks.matching { it.name.startsWith("ksp") && it.name != "kspCommonMainKotlinMetadata" }.configureEach {
+    mustRunAfter(tasks.named("kspCommonMainKotlinMetadata"))
+}

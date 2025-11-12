@@ -15,6 +15,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import com.example.expensetracker.domain.CurrencyConverter
+import com.example.expensetracker.data.repository.SettingsRepository
 import com.example.expensetracker.model.Currency
 import com.example.expensetracker.model.Expense
 import com.example.expensetracker.model.ExpenseCategory
@@ -52,6 +57,42 @@ fun EditExpenseDialog(
     // Validation
     val amountError = amountText.toDoubleOrNull() == null && amountText.isNotEmpty()
     val isValid = description.isNotBlank() && amountText.toDoubleOrNull() != null
+    
+    // Currency conversion preview
+    val currencyConverter = remember { CurrencyConverter.getInstance() }
+    val settingsRepository = remember { SettingsRepository.getInstance() }
+    var baseCurrency by remember { mutableStateOf<Currency?>(null) }
+    var convertedAmount by remember { mutableStateOf<Double?>(null) }
+    var isConverting by remember { mutableStateOf(false) }
+    
+    // Get base currency
+    LaunchedEffect(Unit) {
+        baseCurrency = settingsRepository.getBaseCurrencySync()
+    }
+    
+    // Calculate converted amount when amount, currency, or base currency changes
+    LaunchedEffect(amountText, selectedCurrency, baseCurrency) {
+        val amount = amountText.toDoubleOrNull()
+        val base = baseCurrency
+        
+        if (amount != null && base != null && selectedCurrency != base) {
+            isConverting = true
+            try {
+                convertedAmount = currencyConverter.convertAmountSync(
+                    amount = amount,
+                    fromCurrency = selectedCurrency,
+                    toCurrency = base,
+                    date = selectedDate
+                )
+            } catch (e: Exception) {
+                convertedAmount = null
+            } finally {
+                isConverting = false
+            }
+        } else {
+            convertedAmount = null
+        }
+    }
     
     BasicAlertDialog(
         onDismissRequest = onDismiss,
@@ -291,6 +332,67 @@ fun EditExpenseDialog(
                                             selectedCurrency = currency
                                             currencyExpanded = false
                                         }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Currency Conversion Preview
+                if (baseCurrency != null && selectedCurrency != baseCurrency && amountText.toDoubleOrNull() != null) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = appColors.secondary.copy(alpha = 0.1f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "Converted to base currency",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = appColors.mutedForeground
+                                )
+                                if (isConverting) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            strokeWidth = 2.dp,
+                                            color = appColors.primary
+                                        )
+                                        Text(
+                                            text = "Calculating...",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = appColors.mutedForeground
+                                        )
+                                    }
+                                } else if (convertedAmount != null) {
+                                    Text(
+                                        text = "≈ ${baseCurrency!!.format(convertedAmount!!)}",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = appColors.foreground
+                                    )
+                                } else {
+                                    Text(
+                                        text = "Conversion unavailable",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = appColors.mutedForeground,
+                                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                                     )
                                 }
                             }

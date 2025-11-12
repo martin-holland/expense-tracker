@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.expensetracker.model.Expense
+import com.example.expensetracker.view.components.CurrencyExchangeBanner
 import com.example.expensetracker.view.components.DeleteConfirmationDialog
 import com.example.expensetracker.view.components.EditExpenseDialog
 import com.example.expensetracker.view.components.ExpenseFilterDialog
@@ -42,12 +43,31 @@ fun ExpenseHistoryScreen(
     val appColors = LocalAppColors.current
     val uiState = viewModel.uiState
     
-    // Get filtered and grouped expenses
+    // Get filtered expenses and conversions
     val filteredExpenses = viewModel.getFilteredExpenses()
+    val filteredExpensesWithConversion by viewModel.convertedExpenses.collectAsState()
+    val showConvertedAmounts by viewModel.showConvertedAmounts.collectAsState()
+    
+    // Create a map for quick lookup of conversions by expense ID
+    val conversionMap = remember(filteredExpensesWithConversion) {
+        filteredExpensesWithConversion.associateBy { it.expense.id }
+    }
+    
     val groupedExpenses = groupExpensesByDate(filteredExpenses)
     
     // Scroll state for collapsing toolbar
     val listState = rememberLazyListState()
+    
+    // Currency Exchange Screen state
+    var showCurrencyExchangeScreen by remember { mutableStateOf(false) }
+    
+    // Show Currency Exchange Screen as full screen when requested
+    if (showCurrencyExchangeScreen) {
+        CurrencyExchangeScreen(
+            onNavigateBack = { showCurrencyExchangeScreen = false }
+        )
+        return
+    }
     
     Box(
         modifier = Modifier
@@ -82,6 +102,18 @@ fun ExpenseHistoryScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    // Currency Exchange Banner (first item, below header, above expense list)
+                    item(key = "currency_exchange_banner") {
+                        CurrencyExchangeBanner(
+                            onOpenClick = {
+                                showCurrencyExchangeScreen = true
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 0.dp, vertical = 8.dp)
+                        )
+                    }
+                    
                     groupedExpenses.forEach { (date, expenses) ->
                         // Date header
                         item(key = "header_$date") {
@@ -99,10 +131,14 @@ fun ExpenseHistoryScreen(
                             items = expenses,
                             key = { it.id }
                         ) { expense ->
+                            val conversion = conversionMap[expense.id]
                             SwipeableExpenseItem(
                                 expense = expense,
                                 onEdit = { viewModel.openEditDialog(it) },
-                                onDelete = { viewModel.requestDeleteExpense(it) }
+                                onDelete = { viewModel.requestDeleteExpense(it) },
+                                convertedAmount = conversion?.convertedAmount,
+                                baseCurrency = conversion?.baseCurrency,
+                                showConvertedAmount = showConvertedAmounts
                             )
                         }
                     }

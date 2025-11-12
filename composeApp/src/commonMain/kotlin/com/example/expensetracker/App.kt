@@ -13,9 +13,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.example.expensetracker.view.AddExpenseScreen
 import com.example.expensetracker.view.DashboardScreen
 import com.example.expensetracker.view.ExpenseHistoryScreen
 import com.example.expensetracker.view.SettingsScreen
+
 import com.example.theme.com.example.expensetracker.LocalAppColors
 import com.example.theme.com.example.expensetracker.ThemeProvider
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -52,7 +54,7 @@ fun AppContent() {
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             when (currentScreen) {
                 AppScreen.DASHBOARD ->DashboardScreen()
-                AppScreen.ADD -> BlankScreen("Add")
+                AppScreen.ADD -> AddExpenseScreen()
                 AppScreen.HISTORY -> ExpenseHistoryScreen()
                 AppScreen.SETTINGS ->SettingsScreen()
             }
