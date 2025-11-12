@@ -31,6 +31,12 @@ class AndroidCameraService(private val context: Context) : CameraService {
             try {
                 println("📷 Android: Taking photo...")
 
+                // Check if imageCapture is initialized
+                if (imageCapture == null) {
+                    println("❌ Android: Camera not initialized. imageCapture is null")
+                    return@withContext null
+                }
+
                 // Create output file
                 val photoFile =
                     File(
@@ -65,7 +71,13 @@ class AndroidCameraService(private val context: Context) : CameraService {
                                     continuation.resumeWithException(exc)
                                 }
                             }
-                        )
+                        ) ?: run {
+                            // If imageCapture is null, resume with exception
+                            println("❌ Android: imageCapture is null when trying to take picture")
+                            continuation.resumeWithException(
+                                IllegalStateException("Camera not initialized")
+                            )
+                        }
                     }
 
                 // Read the file and return as ByteArray

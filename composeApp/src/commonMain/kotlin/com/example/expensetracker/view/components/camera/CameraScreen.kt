@@ -142,13 +142,24 @@ fun CameraScreen() {
             Button(
                 onClick = {
                     scope.launch {
-                        isProcessing = true
-                        isCameraOn = true
-                        photoData = cameraService.takePhoto()
-                        isProcessing = false
+                        try {
+                            isProcessing = true
+                            isCameraOn = true
+                            photoData = cameraService.takePhoto()
+                            // Reset processing state after photo is taken (or fails)
+                            if (photoData == null) {
+                                println("⚠️ Camera: Photo capture returned null")
+                            }
+                        } catch (e: Exception) {
+                            println("❌ Camera: Error taking photo: ${e.message}")
+                            e.printStackTrace()
+                            photoData = null
+                        } finally {
+                            isProcessing = false
+                        }
                     }
                 },
-                enabled = !isProcessing
+                enabled = !isProcessing && hasPermission
             ) {
                 if (isProcessing) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp))
@@ -160,7 +171,10 @@ fun CameraScreen() {
             }
 
             Button(
-                onClick = { photoData = null },
+                onClick = { 
+                    photoData = null
+                    imageBitmap = null
+                },
                 colors =
                     ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.secondary
