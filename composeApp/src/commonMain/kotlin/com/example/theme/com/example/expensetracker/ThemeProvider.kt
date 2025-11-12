@@ -14,6 +14,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.expensetracker.model.ThemeOption
 import com.example.expensetracker.viewmodel.SettingsViewModel
 
+
 @Composable
 fun ThemeProvider(
     settingsViewModel: SettingsViewModel = viewModel(),

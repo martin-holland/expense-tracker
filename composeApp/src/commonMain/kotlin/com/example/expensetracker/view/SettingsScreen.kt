@@ -33,6 +33,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.expensetracker.model.Currency
 import com.example.expensetracker.model.ThemeOption
@@ -47,6 +50,30 @@ fun SettingsScreen(
     val selectedCurrency by viewModel.selectedCurrency.collectAsState()
     val selectedThemeOption by viewModel.selectedThemeOption.collectAsState()
     val isVoiceInputEnabled by viewModel.isVoiceInputEnabled.collectAsState()
+    val hasMicrophonePermission by viewModel.hasMicrophonePermission.collectAsState() // ADD THIS
+
+    // Check permission when screen loads
+    LaunchedEffect(Unit) {
+        viewModel.checkMicrophonePermission()
+    }
+
+    val permissionStatus = if (hasMicrophonePermission) {
+        "✅ Microphone permission granted"
+    } else {
+        "❌ Microphone permission required"
+    }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.checkMicrophonePermission()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -73,6 +100,8 @@ fun SettingsScreen(
         // Sections
         SettingsCardVoiceInput(
             isVoiceInputEnabled = isVoiceInputEnabled,
+            hasMicrophonePermission = hasMicrophonePermission,
+            permissionStatus = permissionStatus,
             onVoiceInputToggled = { viewModel.toggleVoiceInput(it) }
         )
 
@@ -95,6 +124,8 @@ fun SettingsScreen(
 @Composable
 fun SettingsCardVoiceInput(
     isVoiceInputEnabled: Boolean,
+    hasMicrophonePermission: Boolean,
+    permissionStatus: String,
     onVoiceInputToggled: (Boolean) -> Unit
 ) {
     val appColors = LocalAppColors.current
@@ -113,6 +144,12 @@ fun SettingsCardVoiceInput(
             color = appColors.foreground,
             modifier = Modifier.padding(bottom = 4.dp)
         )
+        Text(
+            text = permissionStatus,
+            color = if (hasMicrophonePermission) Color.Green else Color.Red,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
@@ -125,7 +162,7 @@ fun SettingsCardVoiceInput(
             }
             Switch(
                 checked = isVoiceInputEnabled,
-                onCheckedChange = { onVoiceInputToggled(it) }
+                onCheckedChange = { onVoiceInputToggled(it) },
             )
         }
     }
