@@ -19,7 +19,6 @@ kotlinx-datetime = "0.7.1"
 ksp = "2.2.20-2.0.4"
 runtime = "1.9.4"
 
-
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }

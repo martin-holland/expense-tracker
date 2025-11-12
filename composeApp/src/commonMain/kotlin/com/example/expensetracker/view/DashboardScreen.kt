@@ -82,18 +82,18 @@ fun DashboardScreen(viewModel: DashBoardViewModel = viewModel { DashBoardViewMod
     val currentMonth = "October 2025"
 
     val categorySumMap =
-            uiState.expenses
-                    .groupBy { it.category }
-                    .mapValues { entry -> entry.value.sumOf { it.amount } }
-                    .toSortedMap(compareBy<ExpenseCategory> { it.displayName })
+        uiState.expenses
+            .groupBy { it.category }
+            .mapValues { entry -> entry.value.sumOf { it.amount } }
+            .toSortedMap(compareBy<ExpenseCategory> { it.displayName })
 
     println(categorySumMap)
 
     Box(
-            modifier =
-                    Modifier.fillMaxSize()
-                            .background(appColors.background)
-                            .statusBarsPadding() // Add padding for system status bar
+        modifier =
+            Modifier.fillMaxSize()
+                .background(appColors.background)
+                .statusBarsPadding() // Add padding for system status bar
     ) {
         Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             Header()
@@ -116,47 +116,47 @@ private fun Header() {
     val titleSize by animateFloatAsState(targetValue = 1f)
 
     Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = appColors.background,
-            shadowElevation = 0.dp
+        modifier = Modifier.fillMaxWidth(),
+        color = appColors.background,
+        shadowElevation = 0.dp
     ) {
         Column(
-                modifier =
-                        Modifier.fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                                .padding(top = headerPadding, bottom = headerPadding)
+            modifier =
+                Modifier.fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(top = headerPadding, bottom = headerPadding)
         ) {
             Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.padding(bottom = 12.dp)
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(bottom = 12.dp)
             ) {
                 Box(
-                        modifier =
-                                Modifier.size(48.dp * titleSize)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF00BCD4)), // Teal color
-                        contentAlignment = Alignment.Center
+                    modifier =
+                        Modifier.size(48.dp * titleSize)
+                            .clip(CircleShape)
+                            .background(Color(0xFF00BCD4)), // Teal color
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                            imageVector = Icons.Filled.FilterList,
-                            contentDescription = "App Icon",
-                            tint = appColors.primaryForeground,
-                            modifier = Modifier.size(24.dp * titleSize)
+                        imageVector = Icons.Filled.FilterList,
+                        contentDescription = "App Icon",
+                        tint = appColors.primaryForeground,
+                        modifier = Modifier.size(24.dp * titleSize)
                     )
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                            text = "Expense Dashboard",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = appColors.foreground
+                        text = "Expense Dashboard",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = appColors.foreground
                     )
 
                     Text(
-                            text = "Expense Tracker",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = appColors.mutedForeground
+                        text = "Expense Tracker",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = appColors.mutedForeground
                     )
                 }
             }
@@ -167,17 +167,17 @@ private fun Header() {
 @Composable
 fun MonthlySpendCard(spend: Double, month: String, currency: Currency) {
     Card(
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF00BFAE)),
-            modifier = Modifier.padding(16.dp).fillMaxWidth()
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF00BFAE)),
+        modifier = Modifier.padding(16.dp).fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Total Monthly Spend", color = Color.White, modifier = Modifier.padding(4.dp))
             Text(
-                    "${retrieveCurrencySymbol(currency)}${spend}",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 32.sp,
-                    modifier = Modifier.padding(4.dp)
+                "${retrieveCurrencySymbol(currency)}${spend}",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 32.sp,
+                modifier = Modifier.padding(4.dp)
             )
             Text(month, color = Color.White, modifier = Modifier.padding(4.dp))
         }
@@ -191,15 +191,15 @@ private fun retrieveCurrencySymbol(currency: Currency): String {
 @Composable
 fun ExpenseBreakdownCard(categorySumMap: Map<ExpenseCategory, Double>) {
     Card(
-            //        shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            modifier =
-                    Modifier.padding(16.dp)
-                            .fillMaxSize()
-                            .border(
-                                    BorderStroke(width = 2.dp, color = Color(0xFFececf0)),
-                                    shape = RoundedCornerShape(12.dp)
-                            )
+        //        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        modifier =
+            Modifier.padding(16.dp)
+                .fillMaxSize()
+                .border(
+                    BorderStroke(width = 2.dp, color = Color(0xFFececf0)),
+                    shape = RoundedCornerShape(12.dp)
+                )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Expense Breakdown", fontWeight = FontWeight.Bold)
@@ -210,7 +210,7 @@ fun ExpenseBreakdownCard(categorySumMap: Map<ExpenseCategory, Double>) {
 }
 
 private fun getPieChartData(
-        categorySumMap: Map<ExpenseCategory, Double>
+    categorySumMap: Map<ExpenseCategory, Double>
 ): List<PieChartData.Slice> {
     var newPieChartData = mutableListOf<PieChartData.Slice>()
     val sum = categorySumMap.values.sumOf { it }
@@ -218,7 +218,7 @@ private fun getPieChartData(
     categorySumMap.forEach { (key, value) ->
         val mappedValue = (value * totalPieSize / sum).toFloat()
         val newPieChartDataEntry =
-                PieChartData.Slice(key.displayName, mappedValue, key.backgroundColor)
+            PieChartData.Slice(key.displayName, mappedValue, key.backgroundColor)
         newPieChartData.add(newPieChartDataEntry)
     }
     return newPieChartData
@@ -227,22 +227,22 @@ private fun getPieChartData(
 @Composable
 fun CategoryPieChart(categorySumMap: Map<ExpenseCategory, Double>) {
     val pieChartData =
-            PieChartData(slices = getPieChartData(categorySumMap), plotType = PlotType.Pie)
+        PieChartData(slices = getPieChartData(categorySumMap), plotType = PlotType.Pie)
     val pieChartConfig =
-            PieChartConfig(
-                    labelVisible = true,
-                    activeSliceAlpha = .9f,
-                    isEllipsizeEnabled = true,
-                    sliceLabelTypeface = FontWeight.Bold,
-                    //            fontFamily = FontFamily(
-                    //                Font(Res.font.Roboto_Medium, weight = FontWeight.Normal)
-                    //            ),
-                    isAnimationEnable = true,
-                    chartPadding = 30,
-                    backgroundColor = Color.White,
-                    showSliceLabels = false,
-                    animationDuration = 1500
-            )
+        PieChartConfig(
+            labelVisible = true,
+            activeSliceAlpha = .9f,
+            isEllipsizeEnabled = true,
+            sliceLabelTypeface = FontWeight.Bold,
+            //            fontFamily = FontFamily(
+            //                Font(Res.font.Roboto_Medium, weight = FontWeight.Normal)
+            //            ),
+            isAnimationEnable = true,
+            chartPadding = 30,
+            backgroundColor = Color.White,
+            showSliceLabels = false,
+            animationDuration = 1500
+        )
     Column(modifier = Modifier.height(350.dp)) {
         Spacer(modifier = Modifier.height(20.dp))
         //        Legends(legendsConfig = getLegendsConfigFromPieChartData(pieChartData, 3))
@@ -257,16 +257,16 @@ fun CategoryPieChart(categorySumMap: Map<ExpenseCategory, Double>) {
 fun CategoryGrid(categorySumMap: Map<ExpenseCategory, Double>) {
     val categories = categorySumMap.keys.toList()
     LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            modifier = Modifier.heightIn(max = 250.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        columns = GridCells.Fixed(2),
+        modifier = Modifier.heightIn(max = 250.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         items(categories) { category ->
             CategorySummaryCard(
-                    category = category,
-                    amount = categorySumMap[category] ?: 0.0,
-                    modifier = Modifier.fillMaxWidth().height(80.dp)
+                category = category,
+                amount = categorySumMap[category] ?: 0.0,
+                modifier = Modifier.fillMaxWidth().height(80.dp)
             )
         }
     }
@@ -275,29 +275,29 @@ fun CategoryGrid(categorySumMap: Map<ExpenseCategory, Double>) {
 @Composable
 fun CategorySummaryCard(category: ExpenseCategory, amount: Double, modifier: Modifier = Modifier) {
     Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = category.backgroundColor),
-            modifier = modifier
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = category.backgroundColor),
+        modifier = modifier
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(12.dp)) {
             Box(
-                    modifier =
-                            Modifier.size(32.dp).background(Color(0xFFececf0), shape = CircleShape),
-                    contentAlignment = Alignment.Center
+                modifier =
+                    Modifier.size(32.dp).background(Color(0xFFececf0), shape = CircleShape),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
-                        imageVector = category.icon,
-                        contentDescription = category.displayName,
-                        tint = Color.Unspecified
+                    imageVector = category.icon,
+                    contentDescription = category.displayName,
+                    tint = Color.Unspecified
                 )
             }
             Spacer(Modifier.width(12.dp))
             Column {
                 Text(category.displayName, style = MaterialTheme.typography.bodyMedium)
                 Text(
-                        "$${amount.toInt()}",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.bodyLarge
+                    "$${amount.toInt()}",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodyLarge
                 )
             }
         }
@@ -315,55 +315,55 @@ fun BarChartExample(expenses: List<Expense>) {
     val yStepSize = 5
 
     val xAxisData =
-            AxisData.Builder()
-                    .axisStepSize(30.dp)
-                    .steps(barData.size - 1)
-                    .bottomPadding(40.dp)
-                    .axisLabelAngle(20f)
-                    .startDrawPadding(20.dp)
-                    .axisLabelColor(Color.Black)
-                    .axisLineColor(Color.Black)
-                    .labelData { index -> barData[index].label }
-                    .build()
+        AxisData.Builder()
+            .axisStepSize(30.dp)
+            .steps(barData.size - 1)
+            .bottomPadding(40.dp)
+            .axisLabelAngle(20f)
+            .startDrawPadding(20.dp)
+            .axisLabelColor(Color.Black)
+            .axisLineColor(Color.Black)
+            .labelData { index -> barData[index].label }
+            .build()
     val yAxisData =
-            AxisData.Builder()
-                    .steps(yStepSize)
-                    .labelAndAxisLinePadding(20.dp)
-                    .axisOffset(10.dp)
-                    .axisLabelColor(Color.Black)
-                    .axisLineColor(Color.Black)
-                    //        .labelData { index -> (index * (maxRange / yStepSize)).toString() }
-                    .labelData { index -> (index * (maxRange / yStepSize)).toString() }
-                    .build()
+        AxisData.Builder()
+            .steps(yStepSize)
+            .labelAndAxisLinePadding(20.dp)
+            .axisOffset(10.dp)
+            .axisLabelColor(Color.Black)
+            .axisLineColor(Color.Black)
+            //        .labelData { index -> (index * (maxRange / yStepSize)).toString() }
+            .labelData { index -> (index * (maxRange / yStepSize)).toString() }
+            .build()
     val barChartData =
-            BarChartData(
-                    chartData = barData,
-                    xAxisData = xAxisData,
-                    yAxisData = yAxisData,
-                    barStyle =
-                            BarStyle(
-                                    cornerRadius = 5.dp,
-                                    paddingBetweenBars = 10.dp,
-                                    barWidth = 25.dp,
-                                    selectionHighlightData =
-                                            SelectionHighlightData(
-                                                    highlightBarColor = Color.LightGray,
-                                                    highlightTextColor = Color.White,
-                                                    highlightTextTypeface = FontWeight.Bold,
-                                                    highlightTextBackgroundColor =
-                                                            Color(0xFF800080), // Magenta
-                                                    popUpLabel = { _, y -> " Value : $y " }
-                                            )
-                            ),
-                    horizontalExtraSpace = 10.dp,
-            )
+        BarChartData(
+            chartData = barData,
+            xAxisData = xAxisData,
+            yAxisData = yAxisData,
+            barStyle =
+                BarStyle(
+                    cornerRadius = 5.dp,
+                    paddingBetweenBars = 10.dp,
+                    barWidth = 25.dp,
+                    selectionHighlightData =
+                        SelectionHighlightData(
+                            highlightBarColor = Color.LightGray,
+                            highlightTextColor = Color.White,
+                            highlightTextTypeface = FontWeight.Bold,
+                            highlightTextBackgroundColor =
+                                Color(0xFF800080), // Magenta
+                            popUpLabel = { _, y -> " Value : $y " }
+                        )
+                ),
+            horizontalExtraSpace = 10.dp,
+        )
     BarChart(modifier = Modifier.height(350.dp), barChartData = barChartData)
 }
 
 private fun getBarChartData(
-        _count: Int,
-        _maxRange: Double,
-        expenses: List<Expense>
+    _count: Int,
+    _maxRange: Double,
+    expenses: List<Expense>
 ): List<BarData> {
     val list = arrayListOf<BarData>()
 
@@ -372,16 +372,16 @@ private fun getBarChartData(
 
     // Filter expenses to only include those in the last 7 days (not future dates)
     val filteredExpenses =
-            expenses.filter { expense ->
-                val expenseDate = expense.date.date
-                expenseDate in last7Days
-            }
+        expenses.filter { expense ->
+            val expenseDate = expense.date.date
+            expenseDate in last7Days
+        }
 
     // Group filtered expenses by date and sum amounts
     val expensesByDate =
-            filteredExpenses.groupBy { it.date.date }.mapValues { entry ->
-                entry.value.sumOf { it.amount }
-            }
+        filteredExpenses.groupBy { it.date.date }.mapValues { entry ->
+            entry.value.sumOf { it.amount }
+        }
 
     // Create bar data for each of the last 7 days in chronological order
     last7Days.forEachIndexed { index, date ->
@@ -389,15 +389,15 @@ private fun getBarChartData(
         val dayLabel = convertToDateOfWeekLabel(date)
 
         list.add(
-                BarData(
-                        point =
-                                network.chaintech.cmpcharts.common.model.Point(
-                                        x = index.toFloat(),
-                                        y = totalForDay.toFloat()
-                                ),
-                        label = dayLabel,
-                        color = Color(0xFF00BFAE)
-                )
+            BarData(
+                point =
+                    network.chaintech.cmpcharts.common.model.Point(
+                        x = index.toFloat(),
+                        y = totalForDay.toFloat()
+                    ),
+                label = dayLabel,
+                color = Color(0xFF00BFAE)
+            )
         )
     }
 
@@ -457,15 +457,15 @@ private fun convertToDateOfWeek(day: LocalDateTime): String {
 fun WeekBarCard(expenses: List<Expense>, _modifier: Modifier = Modifier) {
 
     Card(
-            //        shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            modifier =
-                    Modifier.padding(16.dp)
-                            .fillMaxSize()
-                            .border(
-                                    BorderStroke(width = 2.dp, color = Color(0xFFececf0)),
-                                    shape = RoundedCornerShape(12.dp)
-                            )
+        //        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        modifier =
+            Modifier.padding(16.dp)
+                .fillMaxSize()
+                .border(
+                    BorderStroke(width = 2.dp, color = Color(0xFFececf0)),
+                    shape = RoundedCornerShape(12.dp)
+                )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("This Week", fontWeight = FontWeight.Bold)
