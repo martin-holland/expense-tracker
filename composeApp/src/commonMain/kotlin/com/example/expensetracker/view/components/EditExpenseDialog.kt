@@ -54,9 +54,10 @@ fun EditExpenseDialog(
     var categoryExpanded by remember { mutableStateOf(false) }
     var currencyExpanded by remember { mutableStateOf(false) }
     
-    // Validation
-    val amountError = amountText.toDoubleOrNull() == null && amountText.isNotEmpty()
-    val isValid = description.isNotBlank() && amountText.toDoubleOrNull() != null
+    // Validation - matches AddExpenseViewModel validation logic
+    val amountError = amountText.isBlank() || amountText == "." || amountText.toDoubleOrNull() == null
+    val descriptionError = description.isBlank()
+    val isValid = !amountError && !descriptionError
     
     // Currency conversion preview
     val currencyConverter = remember { CurrencyConverter.getInstance() }
@@ -220,10 +221,15 @@ fun EditExpenseDialog(
                         value = description,
                         onValueChange = { description = it },
                         placeholder = { Text("e.g., Lunch at restaurant") },
+                        isError = descriptionError,
+                        supportingText = if (descriptionError) {
+                            { Text("Description cannot be blank.", color = appColors.destructive) }
+                        } else null,
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = appColors.primary,
-                            unfocusedBorderColor = appColors.border
+                            unfocusedBorderColor = appColors.border,
+                            errorBorderColor = appColors.destructive
                         ),
                         singleLine = true
                     )
@@ -248,12 +254,17 @@ fun EditExpenseDialog(
                         
                         OutlinedTextField(
                             value = amountText,
-                            onValueChange = { amountText = it },
+                            onValueChange = { 
+                                // Only allow valid decimal input (matches AddExpenseViewModel logic)
+                                if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d*$"))) {
+                                    amountText = it
+                                }
+                            },
                             placeholder = { Text("0.00") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            isError = amountError,
-                            supportingText = if (amountError) {
-                                { Text("Invalid amount", color = appColors.destructive) }
+                            isError = amountError && amountText.isNotEmpty(),
+                            supportingText = if (amountError && amountText.isNotEmpty()) {
+                                { Text("Please enter a valid amount.", color = appColors.destructive) }
                             } else null,
                             modifier = Modifier.fillMaxWidth(),
                             colors = OutlinedTextFieldDefaults.colors(
@@ -451,8 +462,19 @@ fun EditExpenseDialog(
                     
                     Button(
                         onClick = {
+                            // Validate input before saving (matches AddExpenseViewModel validation)
+                            if (amountText.isBlank() || amountText == "." || amountText.toDoubleOrNull() == null) {
+                                // Error will be shown via isError on the field
+                                return@Button
+                            }
+                            
+                            if (description.isBlank()) {
+                                // Error will be shown via isError on the field
+                                return@Button
+                            }
+                            
                             val amount = amountText.toDoubleOrNull()
-                            if (isValid && amount != null) {
+                            if (amount != null) {
                                 val updatedExpense = expense.copy(
                                     category = selectedCategory,
                                     description = description,
