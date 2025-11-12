@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.expensetracker.view.components.camera.CameraScreen
 import com.example.expensetracker.viewmodel.AddExpenseViewModel
 import com.example.theme.com.example.expensetracker.AppColors
 import com.example.theme.com.example.expensetracker.LocalAppColors
@@ -48,6 +49,7 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
     val date = viewModel.date
 
     var showDialog by remember { mutableStateOf(false) }
+    var showCamera by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState()
 
     Column(
@@ -252,6 +254,10 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
             )
         }
 
+        // Camera Section
+        if (showCamera)CameraScreen()
+
+
         // === Quick Input Section ===
         Text("Quick Input", color = AppColors.foreground, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
@@ -264,13 +270,15 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
                     label = "Voice Input",
                     subtext = "Tap to speak",
                     icon = Icons.Default.Mic,
-                    accent = accentGreen
+                    accent = accentGreen,
+                    action = {}
                 )
                 QuickInputItem(
                     label = "Receipt",
                     subtext = "Tap to capture",
                     icon = Icons.Default.CameraAlt,
-                    accent = accentGreen
+                    accent = accentGreen,
+                    action = {showCamera = !showCamera}
                 )
             }
         }
@@ -317,13 +325,14 @@ private fun SectionCard(title: String, content: @Composable ColumnScope.() -> Un
 }
 
 @Composable
-private fun QuickInputItem(label: String, subtext: String, icon: ImageVector, accent: Color) {
+private fun QuickInputItem(label: String, subtext: String, icon: ImageVector, accent: Color, action: () ->Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
                 .size(60.dp)
                 .clip(CircleShape)
-                .background(accent),
+                .background(accent)
+                .clickable{action()},
             contentAlignment = Alignment.Center
         ) {
             Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(28.dp))

@@ -61,6 +61,7 @@ import com.example.expensetracker.model.Expense
 import com.example.expensetracker.model.ExpenseCategory
 import com.example.expensetracker.services.decodeByteArrayToImageBitmap
 import com.example.expensetracker.services.getCameraService
+import com.example.expensetracker.view.components.camera.CameraScreen
 import com.example.expensetracker.viewmodel.DashBoardViewModel
 import com.example.theme.com.example.expensetracker.LocalAppColors
 import io.github.aakira.napier.Napier
@@ -110,7 +111,6 @@ fun DashboardScreen(viewModel: DashBoardViewModel = viewModel { DashBoardViewMod
     ) {
         Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             Header()
-            CameraScreen()
             MonthlySpendCard(totalSpent, currentMonth, chosenCurrenty)
 
             ExpenseBreakdownCard(categorySumMap)
@@ -177,142 +177,6 @@ private fun Header() {
         }
     }
 }
-
-@Composable
-fun CameraScreen() {
-    val cameraService = getCameraService()
-    var photoData by remember { mutableStateOf<ByteArray?>(null) }
-    var imageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
-    var isProcessing by remember { mutableStateOf(false) }
-    var isCameraOn by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-
-    // Convert byte array to ImageBitmap when photo data changes
-    LaunchedEffect(photoData) {
-        photoData?.let { bytes ->
-            try {
-                imageBitmap = decodeByteArrayToImageBitmap(bytes)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-            ?: run { imageBitmap = null }
-    }
-
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-
-        if (isCameraOn) {
-            Card(
-                modifier = Modifier.fillMaxWidth().height(300.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                colors =
-                    CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-            ) {
-
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    when {
-                        imageBitmap != null -> {
-                            Image(
-                                bitmap = imageBitmap!!,
-                                contentDescription = "Captured photo",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Fit
-                            )
-                        }
-                        photoData != null -> {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Text("✅", style = MaterialTheme.typography.displayMedium)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    "Photo captured!",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
-                                    "(${photoData!!.size} bytes)",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                        }
-                        else -> {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Text("📸", style = MaterialTheme.typography.displayLarge)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text("No photo taken yet", style = MaterialTheme.typography.bodyLarge)
-                                Text(
-                                    "Tap 'Take Photo' to start",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
-                onClick = {
-                    scope.launch {
-                        isProcessing = true
-                        isCameraOn = true
-                        photoData = cameraService.takePhoto()
-                        isProcessing = false
-                    }
-                },
-                enabled = !isProcessing
-            ) {
-                if (isProcessing) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
-                } else {
-                    Text("📷")
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Take Photo")
-            }
-
-            Button(
-                onClick = { photoData = null },
-                colors =
-                    ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    )
-            ) {
-                Text("🗑️")
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Clear", color = Color.Black)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text =
-                "Camera Permission: ${if (cameraService.hasCameraPermission()) "Granted" else "Not Granted"}",
-            style = MaterialTheme.typography.bodySmall,
-            color =
-                if (cameraService.hasCameraPermission()) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.error
-        )
-    }
-}
-
 
 @Composable
 fun MonthlySpendCard(spend: Double, month: String, currency: Currency) {
