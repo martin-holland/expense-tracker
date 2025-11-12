@@ -1,30 +1,34 @@
 // androidMain/MainActivity.kt
 package com.example.expensetracker
-
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import com.example.expensetracker.services.AndroidCameraService
+import com.example.expensetracker.services.initializeNapier
 import com.example.expensetracker.data.database.AndroidDatabaseContext
 import com.example.expensetracker.data.worker.ExchangeRateRefreshWorker
-import androidx.core.content.ContextCompat
 import com.example.theme.com.example.expensetracker.ThemeProvider
+import io.github.aakira.napier.Napier
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
-        // Initialize database context for Android
-        AndroidDatabaseContext.init(this)
-        
+
+
         // Initialize database early to ensure migrations run
         // This triggers database creation and applies migrations if needed
         android.util.Log.d("MainActivity", "Initializing database...")
@@ -36,7 +40,7 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) {
             android.util.Log.e("MainActivity", "Error initializing database", e)
         }
-        
+
         // Initialize and schedule background exchange rate refresh
         try {
             ExchangeRateRefreshWorker.initialize(this)
@@ -45,13 +49,21 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) {
             android.util.Log.e("MainActivity", "Error scheduling exchange rate refresh", e)
         }
-        //create a logger instance
-//        AndroidLogcatLogger.installOnDebuggableApp(this, minPriority = VERBOSE)
+
 
         appContext = this
 
 
         requestNecessaryPermissions()
+
+        initializeNapier()
+        Napier.d("App initialized", tag = "DDD")
+
+        // Initialize database context for Android
+        AndroidDatabaseContext.init(this)
+
+//
+        initializeCamera()
 
         setContent {
             ThemeProvider {
@@ -74,8 +86,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-    // permission request popup that should happen at the start of app
-    // should also implement to popup if microphone disabled and click in stgs
     private fun requestNecessaryPermissions() {
         // Only request permissions on Android 6.0 (API 23) and above
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -99,7 +109,7 @@ class MainActivity : ComponentActivity() {
             if (permissionsToRequest.isNotEmpty()) {
                 permissionLauncher.launch(permissionsToRequest.toTypedArray())
             } else {
-                println("✅ All permissions already granted")
+                Napier.d("All permission granted",tag="DDD")
             }
         }
     }
@@ -112,11 +122,25 @@ class MainActivity : ComponentActivity() {
             println("🎤 Microphone permission already granted")
         }
     }
+
+
+
+
+    private fun initializeCamera() {
+        try {
+            val cameraService = AndroidCameraService.getInstance(this)
+            // Start camera in coroutine
+            lifecycleScope.launch { cameraService.startCamera(this@MainActivity) }
+        } catch (e: Exception) {
+            println("❌ Error initializing camera: ${e.message}")
+        }
+    }
     companion object {
         // TODO: Consider using dependency injection or Application class instead of global context
         // This pattern works but is not ideal for testability and separation of concerns
         lateinit var appContext: Context
     }
+
 }
 
 @Preview
