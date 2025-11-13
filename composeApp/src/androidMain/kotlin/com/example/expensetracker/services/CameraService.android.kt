@@ -147,6 +147,28 @@ class AndroidCameraService(private val context: Context) : CameraService {
         return true
     }
 
+    override fun isCameraReady(): Boolean {
+        return imageCapture != null
+    }
+
+    override suspend fun ensureCameraInitialized(): Boolean {
+        // If camera is already ready, return true
+        if (imageCapture != null) {
+            return true
+        }
+        
+        // Try to initialize camera if we have permission
+        if (hasCameraPermission()) {
+            // We need a LifecycleOwner, but we can't get it here
+            // The camera should be initialized in MainActivity
+            // This is a fallback that returns false if not ready
+            println("⚠️ Android: Camera not initialized. Please ensure camera is initialized in MainActivity.")
+            return false
+        }
+        
+        return false
+    }
+
     fun shutdown() {
         cameraExecutor.shutdown()
     }

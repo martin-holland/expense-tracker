@@ -62,8 +62,15 @@ class MainActivity : ComponentActivity() {
         // Initialize database context for Android
         AndroidDatabaseContext.init(this)
 
-//
-        initializeCamera()
+        // Initialize camera only if permission is already granted
+        // Otherwise, it will be initialized when permission is granted
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            initializeCamera()
+        } else {
+            println("📷 Camera permission not granted yet, will initialize after permission is granted")
+        }
 
         setContent {
             ThemeProvider {
@@ -80,6 +87,11 @@ class MainActivity : ComponentActivity() {
                 val isGranted = entry.value
                 if (isGranted) {
                     println("✅ Permission granted: $permission")
+                    // Initialize camera if camera permission was just granted
+                    if (permission == Manifest.permission.CAMERA) {
+                        println("📷 Camera permission granted, initializing camera...")
+                        initializeCamera()
+                    }
                 } else {
                     println("❌ Permission denied: $permission")
                 }

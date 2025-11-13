@@ -34,6 +34,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.example.expensetracker.services.decodeByteArrayToImageBitmap
 import com.example.expensetracker.services.getCameraService
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 
@@ -48,6 +49,7 @@ fun CameraScreen() {
 
     // Add this state to trigger recomposition when permissions change
     var permissionCheck by remember { mutableStateOf(0) }
+    var cameraInitAttempted by remember { mutableStateOf(false) }
 
     // Force recomposition when permissions might have changed
     LaunchedEffect(Unit) {
@@ -57,6 +59,21 @@ fun CameraScreen() {
 
     // Your existing code, but update the permission check:
     val hasPermission = cameraService.hasCameraPermission()
+    val isCameraReady = cameraService.isCameraReady()
+
+    // Try to ensure camera is initialized when screen is shown
+    LaunchedEffect(hasPermission, cameraInitAttempted) {
+        if (hasPermission && !isCameraReady && !cameraInitAttempted) {
+            cameraInitAttempted = true
+            println("📷 CameraScreen: Camera not ready, attempting to ensure initialization...")
+            // Give a moment for MainActivity to initialize if it's in progress
+            delay(500)
+            val initialized = cameraService.ensureCameraInitialized()
+            if (!initialized) {
+                println("⚠️ CameraScreen: Camera initialization check failed. Camera may need to be initialized in MainActivity.")
+            }
+        }
+    }
 
     // Convert byte array to ImageBitmap when photo data changes
 
@@ -138,6 +155,24 @@ fun CameraScreen() {
         }
 
 
+        // Show warning if camera is not ready
+        if (!isCameraReady && hasPermission) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                )
+            ) {
+                Text(
+                    text = "⚠️ Camera not ready. Please wait a moment and try again.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
                 onClick = {
@@ -145,6 +180,14 @@ fun CameraScreen() {
                         try {
                             isProcessing = true
                             isCameraOn = true
+                            
+                            // Check if camera is ready before taking photo
+                            if (!cameraService.isCameraReady()) {
+                                println("⚠️ Camera: Camera not ready, cannot take photo")
+                                photoData = null
+                                return@launch
+                            }
+                            
                             photoData = cameraService.takePhoto()
                             // Reset processing state after photo is taken (or fails)
                             if (photoData == null) {
@@ -159,7 +202,7 @@ fun CameraScreen() {
                         }
                     }
                 },
-                enabled = !isProcessing && hasPermission
+                enabled = !isProcessing && hasPermission && isCameraReady
             ) {
                 if (isProcessing) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp))
