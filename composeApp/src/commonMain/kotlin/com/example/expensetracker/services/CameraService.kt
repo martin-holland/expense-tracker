@@ -13,6 +13,8 @@ interface CameraService {
     suspend fun requestCameraPermission(): Boolean
     fun isCameraReady(): Boolean
     suspend fun ensureCameraInitialized(): Boolean
+    suspend fun startCamera(lifecycleOwner: Any): Boolean
+    suspend fun stopCamera()
 }
 
 expect fun getCameraService(): CameraService

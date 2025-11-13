@@ -24,6 +24,7 @@ import kotlin.coroutines.resumeWithException
 class AndroidCameraService(private val context: Context) : CameraService {
 
     private var imageCapture: ImageCapture? = null
+    private var cameraProvider: ProcessCameraProvider? = null
     private val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
 
     override suspend fun takePhoto(): ByteArray? =
@@ -99,11 +100,16 @@ class AndroidCameraService(private val context: Context) : CameraService {
             }
         }
 
-    suspend fun startCamera(lifecycleOwner: LifecycleOwner) =
+    override suspend fun startCamera(lifecycleOwner: Any): Boolean =
         withContext(Dispatchers.Main) {
             try {
+                if (lifecycleOwner !is LifecycleOwner) {
+                    println("❌ Android: Invalid LifecycleOwner type")
+                    return@withContext false
+                }
+                
                 println("🎥 Android: Starting camera...")
-                val cameraProvider = ProcessCameraProvider.getInstance(context).get()
+                cameraProvider = ProcessCameraProvider.getInstance(context).get()
 
                 // Preview
                 val preview = Preview.Builder().build()
@@ -118,10 +124,10 @@ class AndroidCameraService(private val context: Context) : CameraService {
                 val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
                 // Unbind all use cases before rebinding
-                cameraProvider.unbindAll()
+                cameraProvider?.unbindAll()
 
                 // Bind use cases to camera
-                cameraProvider.bindToLifecycle(
+                cameraProvider?.bindToLifecycle(
                     lifecycleOwner,
                     cameraSelector,
                     preview,
@@ -136,6 +142,19 @@ class AndroidCameraService(private val context: Context) : CameraService {
                 false
             }
         }
+
+    override suspend fun stopCamera() = withContext(Dispatchers.Main) {
+        try {
+            println("🛑 Android: Stopping camera...")
+            cameraProvider?.unbindAll()
+            cameraProvider = null
+            imageCapture = null
+            println("✅ Android: Camera stopped successfully")
+        } catch (e: Exception) {
+            println("❌ Android: Error stopping camera: ${e.message}")
+            e.printStackTrace()
+        }
+    }
 
     override fun hasCameraPermission(): Boolean {
         return ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) ==

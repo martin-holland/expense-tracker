@@ -20,6 +20,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,11 +33,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.expensetracker.services.decodeByteArrayToImageBitmap
 import com.example.expensetracker.services.getCameraService
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
 
 @Composable
 fun CameraScreen() {
@@ -47,31 +47,32 @@ fun CameraScreen() {
     var isCameraOn by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    // Add this state to trigger recomposition when permissions change
-    var permissionCheck by remember { mutableStateOf(0) }
-    var cameraInitAttempted by remember { mutableStateOf(false) }
-
-    // Force recomposition when permissions might have changed
-    LaunchedEffect(Unit) {
-        // This will make the composable check permission state again
-        permissionCheck++
-    }
+    // Get lifecycle owner for camera binding
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     // Your existing code, but update the permission check:
     val hasPermission = cameraService.hasCameraPermission()
     val isCameraReady = cameraService.isCameraReady()
 
-    // Try to ensure camera is initialized when screen is shown
-    LaunchedEffect(hasPermission, cameraInitAttempted) {
-        if (hasPermission && !isCameraReady && !cameraInitAttempted) {
-            cameraInitAttempted = true
-            println("📷 CameraScreen: Camera not ready, attempting to ensure initialization...")
-            // Give a moment for MainActivity to initialize if it's in progress
-            delay(500)
-            val initialized = cameraService.ensureCameraInitialized()
-            if (!initialized) {
-                println("⚠️ CameraScreen: Camera initialization check failed. Camera may need to be initialized in MainActivity.")
+    // Start camera when screen is displayed (only if permission is granted)
+    // This LaunchedEffect runs when the composable is displayed or when permission changes
+    LaunchedEffect(hasPermission) {
+        if (hasPermission && !isCameraReady) {
+            println("📷 CameraScreen: Starting camera...")
+            val started = cameraService.startCamera(lifecycleOwner)
+            if (started) {
+                println("✅ CameraScreen: Camera started successfully")
+            } else {
+                println("❌ CameraScreen: Failed to start camera")
             }
+        }
+    }
+
+    // Stop camera when screen is disposed (when user navigates away or closes camera)
+    DisposableEffect(Unit) {
+        onDispose {
+            println("🛑 CameraScreen: Disposing, stopping camera...")
+            scope.launch { cameraService.stopCamera() }
         }
     }
 
@@ -85,65 +86,66 @@ fun CameraScreen() {
                 e.printStackTrace()
             }
         }
-            ?: run { imageBitmap = null }
+                ?: run { imageBitmap = null }
     }
 
     Column(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-
-        if (isCameraOn  && hasPermission) {
+        if (isCameraOn && hasPermission) {
             Card(
-                modifier = Modifier.fillMaxWidth().height(300.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                colors =
-                    CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
+                    modifier = Modifier.fillMaxWidth().height(300.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    colors =
+                            CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
             ) {
-
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     when {
                         imageBitmap != null -> {
                             Image(
-                                bitmap = imageBitmap!!,
-                                contentDescription = "Captured photo",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Fit
+                                    bitmap = imageBitmap!!,
+                                    contentDescription = "Captured photo",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Fit
                             )
                         }
                         photoData != null -> {
                             Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
                             ) {
                                 Text("✅", style = MaterialTheme.typography.displayMedium)
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    "Photo captured!",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.primary
+                                        "Photo captured!",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
-                                    "(${photoData!!.size} bytes)",
-                                    style = MaterialTheme.typography.bodySmall
+                                        "(${photoData!!.size} bytes)",
+                                        style = MaterialTheme.typography.bodySmall
                                 )
                             }
                         }
                         else -> {
                             Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
                             ) {
                                 Text("📸", style = MaterialTheme.typography.displayLarge)
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text("No photo taken yet", style = MaterialTheme.typography.bodyLarge)
                                 Text(
-                                    "Tap 'Take Photo' to start",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        "No photo taken yet",
+                                        style = MaterialTheme.typography.bodyLarge
+                                )
+                                Text(
+                                        "Tap 'Take Photo' to start",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -154,20 +156,23 @@ fun CameraScreen() {
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-
         // Show warning if camera is not ready
         if (!isCameraReady && hasPermission) {
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-                )
+                    modifier = Modifier.fillMaxWidth(),
+                    colors =
+                            CardDefaults.cardColors(
+                                    containerColor =
+                                            MaterialTheme.colorScheme.errorContainer.copy(
+                                                    alpha = 0.3f
+                                            )
+                            )
             ) {
                 Text(
-                    text = "⚠️ Camera not ready. Please wait a moment and try again.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(12.dp)
+                        text = "⚠️ Camera not ready. Please wait a moment and try again.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(12.dp)
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -175,34 +180,34 @@ fun CameraScreen() {
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
-                onClick = {
-                    scope.launch {
-                        try {
-                            isProcessing = true
-                            isCameraOn = true
-                            
-                            // Check if camera is ready before taking photo
-                            if (!cameraService.isCameraReady()) {
-                                println("⚠️ Camera: Camera not ready, cannot take photo")
+                    onClick = {
+                        scope.launch {
+                            try {
+                                isProcessing = true
+                                isCameraOn = true
+
+                                // Check if camera is ready before taking photo
+                                if (!cameraService.isCameraReady()) {
+                                    println("⚠️ Camera: Camera not ready, cannot take photo")
+                                    photoData = null
+                                    return@launch
+                                }
+
+                                photoData = cameraService.takePhoto()
+                                // Reset processing state after photo is taken (or fails)
+                                if (photoData == null) {
+                                    println("⚠️ Camera: Photo capture returned null")
+                                }
+                            } catch (e: Exception) {
+                                println("❌ Camera: Error taking photo: ${e.message}")
+                                e.printStackTrace()
                                 photoData = null
-                                return@launch
+                            } finally {
+                                isProcessing = false
                             }
-                            
-                            photoData = cameraService.takePhoto()
-                            // Reset processing state after photo is taken (or fails)
-                            if (photoData == null) {
-                                println("⚠️ Camera: Photo capture returned null")
-                            }
-                        } catch (e: Exception) {
-                            println("❌ Camera: Error taking photo: ${e.message}")
-                            e.printStackTrace()
-                            photoData = null
-                        } finally {
-                            isProcessing = false
                         }
-                    }
-                },
-                enabled = !isProcessing && hasPermission && isCameraReady
+                    },
+                    enabled = !isProcessing && hasPermission && isCameraReady
             ) {
                 if (isProcessing) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp))
@@ -214,14 +219,14 @@ fun CameraScreen() {
             }
 
             Button(
-                onClick = { 
-                    photoData = null
-                    imageBitmap = null
-                },
-                colors =
-                    ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    )
+                    onClick = {
+                        photoData = null
+                        imageBitmap = null
+                    },
+                    colors =
+                            ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondary
+                            )
             ) {
                 Text("🗑️")
                 Spacer(modifier = Modifier.width(8.dp))
@@ -231,14 +236,14 @@ fun CameraScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-//        Text(
-//            text =
-//                "Camera Permission: ${if (cameraService.hasCameraPermission()) "Granted" else "Not Granted"}",
-//            style = MaterialTheme.typography.bodySmall,
-//            color =
-//                if (cameraService.hasCameraPermission()) MaterialTheme.colorScheme.primary
-//                else MaterialTheme.colorScheme.error
-//        )
+        //        Text(
+        //            text =
+        //                "Camera Permission: ${if (cameraService.hasCameraPermission()) "Granted"
+        // else "Not Granted"}",
+        //            style = MaterialTheme.typography.bodySmall,
+        //            color =
+        //                if (cameraService.hasCameraPermission()) MaterialTheme.colorScheme.primary
+        //                else MaterialTheme.colorScheme.error
+        //        )
     }
 }
-
