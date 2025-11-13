@@ -16,6 +16,9 @@ import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,15 +37,17 @@ import com.example.expensetracker.model.ExpenseCategory
 import com.example.expensetracker.service.getMicrophoneService
 import com.example.expensetracker.view.components.camera.CameraScreen
 import com.example.expensetracker.viewmodel.AddExpenseViewModel
+import com.example.expensetracker.viewmodel.VoiceInputViewModel
 import com.example.theme.com.example.expensetracker.AppColors
 import com.example.theme.com.example.expensetracker.LocalAppColors
 import kotlin.time.ExperimentalTime
-import kotlinx.coroutines.launch
 import kotlinx.datetime.*
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalTime::class)
 @Composable
 fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
+    val voiceViewModel: VoiceInputViewModel = viewModel<VoiceInputViewModel>()
+
     val appColors = LocalAppColors.current
     val accentGreen = appColors.chart2
     val sectionShape = RoundedCornerShape(12.dp)
@@ -52,7 +57,7 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
     val category = viewModel.category
     val note = viewModel.note
     val date = viewModel.date
-    var showVoiceSection by remember { mutableStateOf(false) }
+    val showVoiceSection by voiceViewModel.showVoiceSection.collectAsState()
     val errorMessage = viewModel.errorMessage
     val isSaving = viewModel.isSaving
     val saveSuccess = viewModel.saveSuccess
@@ -331,7 +336,7 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
                         subtext = if (showVoiceSection) "Tap to close" else "Tap to speak",
                         icon = Icons.Default.Mic,
                         accent = accentGreen,
-                        action = { showVoiceSection = !showVoiceSection }
+                        action = { voiceViewModel.toggleVoiceSection() }
                 )
                 if (!showCamera) {
                     QuickInputItem(
@@ -353,7 +358,7 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
             }
         }
         Spacer(Modifier.height(20.dp))
-        VoiceInputSection(showVoiceSection = showVoiceSection)
+        VoiceInputSection(voiceViewModel = voiceViewModel)
 
         Spacer(Modifier.height(40.dp))
         Button(
@@ -440,18 +445,27 @@ private fun SectionCard(title: String, content: @Composable ColumnScope.() -> Un
 }
 
 @Composable
-private fun VoiceInputSection(showVoiceSection: Boolean) {
-    val microphoneService = getMicrophoneService()
-    var isRecording by remember { mutableStateOf(false) }
-    var audioData by remember { mutableStateOf<ByteArray?>(null) }
-    var transcription by remember { mutableStateOf("") }
-    val scope = rememberCoroutineScope()
+private fun VoiceInputSection(voiceViewModel: VoiceInputViewModel = viewModel()) {
+    val isRecording by voiceViewModel.isRecording.collectAsState()
+    val audioData by voiceViewModel.audioData.collectAsState()
+    val isProcessing by voiceViewModel.isProcessing.collectAsState()
+    val errorMessage by voiceViewModel.errorMessage.collectAsState()
+    val showVoiceSection by voiceViewModel.showVoiceSection.collectAsState()
+
     val appColors = LocalAppColors.current
     val accentGreen = appColors.chart2
 
     if (showVoiceSection) {
         SectionCard(title = "Voice Input") {
-            // Recording Status Card
+            errorMessage?.let { error ->
+                Text(
+                        error,
+                        color = Color.Red,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
             Card(
                     modifier = Modifier.fillMaxWidth().height(80.dp),
                     colors = CardDefaults.cardColors(containerColor = AppColors.inputBackground),
@@ -462,46 +476,29 @@ private fun VoiceInputSection(showVoiceSection: Boolean) {
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    if (isRecording) {
-                        Text(
-                                "🎤 Recording...",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = accentGreen,
-                                fontWeight = FontWeight.Medium
-                        )
-                    } else if (audioData != null) {
-                        Text(
-                                "✅ Audio recorded (${audioData!!.size} bytes)",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = accentGreen,
-                                fontWeight = FontWeight.Medium
-                        )
-                    } else {
-                        Text(
-                                "Tap record to start voice input",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = AppColors.mutedForeground
-                        )
-                    }
+                    Text(
+                            text =
+                                    when {
+                                        isRecording -> "🎤 Recording..."
+                                        audioData != null ->
+                                                "✅ Audio recorded (${audioData!!.size} bytes)"
+                                        else -> "Tap record to start voice input"
+                                    },
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = accentGreen,
+                            fontWeight = FontWeight.Medium
+                    )
                 }
             }
 
             Spacer(Modifier.height(16.dp))
 
-            // Recording Button
             Button(
                     onClick = {
-                        scope.launch {
-                            if (isRecording) {
-                                val data = microphoneService.stopRecording()
-                                audioData = data
-                                isRecording = false
-                            } else {
-                                val success = microphoneService.startRecording()
-                                if (success) {
-                                    isRecording = true
-                                }
-                            }
+                        if (isRecording) {
+                            voiceViewModel.stopRecording()
+                        } else {
+                            voiceViewModel.startRecording()
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -510,13 +507,22 @@ private fun VoiceInputSection(showVoiceSection: Boolean) {
                                     containerColor =
                                             if (isRecording) Color(0xFFFF6B6B) else accentGreen
                             ),
-                    shape = RoundedCornerShape(10.dp)
+                    shape = RoundedCornerShape(10.dp),
+                    enabled = !isProcessing
             ) {
-                Icon(
-                        if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
-                        contentDescription = null,
-                        tint = Color.White
-                )
+                if (isProcessing) {
+                    CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                            if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
+                            contentDescription = null,
+                            tint = Color.White
+                    )
+                }
                 Spacer(Modifier.width(8.dp))
                 Text(
                         if (isRecording) "Stop Recording" else "Start Recording",
@@ -527,12 +533,10 @@ private fun VoiceInputSection(showVoiceSection: Boolean) {
 
             Spacer(Modifier.height(12.dp))
 
-            // Action Buttons Row
             Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Transcribe Button
                 Button(
                         onClick = {
                             // Non-functional for now
@@ -551,14 +555,9 @@ private fun VoiceInputSection(showVoiceSection: Boolean) {
                     Text("Transcribe", color = Color.White)
                 }
 
-                // Play Button
                 Button(
-                        onClick = {
-                            scope.launch {
-                                audioData?.let { data -> microphoneService.playAudio(data) }
-                            }
-                        },
-                        enabled = audioData != null && !isRecording,
+                        onClick = { voiceViewModel.playAudio() },
+                        enabled = audioData != null && !isRecording && !isProcessing,
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = AppColors.chart1),
                         shape = RoundedCornerShape(10.dp)
@@ -569,51 +568,14 @@ private fun VoiceInputSection(showVoiceSection: Boolean) {
                 }
             }
 
-            // Transcription Display
-            if (transcription.isNotEmpty()) {
-                Spacer(Modifier.height(16.dp))
-                Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors =
-                                CardDefaults.cardColors(containerColor = AppColors.inputBackground),
-                        border = BorderStroke(1.dp, AppColors.border)
-                ) {
-                    Column(Modifier.padding(16.dp)) {
-                        Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                    "Transcription",
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = AppColors.foreground
-                            )
-                            Text(
-                                    "${transcription.length} chars",
-                                    fontSize = 12.sp,
-                                    color = AppColors.mutedForeground
-                            )
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                                text = transcription,
-                                modifier = Modifier.fillMaxWidth(),
-                                color = AppColors.foreground,
-                                fontSize = 14.sp
-                        )
-                    }
-                }
-            }
-
             // Permission Status
             Spacer(Modifier.height(8.dp))
             Text(
                     text =
-                            "Microphone Permission: ${if (microphoneService.hasMicrophonePermission()) "Granted" else "Not Granted"}",
+                            "Microphone Permission: ${if (getMicrophoneService().hasMicrophonePermission()) "Granted" else "Not Granted"}",
                     fontSize = 12.sp,
                     color =
-                            if (microphoneService.hasMicrophonePermission()) accentGreen
+                            if (getMicrophoneService().hasMicrophonePermission()) accentGreen
                             else Color(0xFFFF6B6B)
             )
         }
