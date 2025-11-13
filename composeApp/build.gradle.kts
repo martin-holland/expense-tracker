@@ -1,3 +1,4 @@
+import org.gradle.kotlin.dsl.implementation
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -27,15 +28,27 @@ kotlin {
             isStatic = true
         }
     }
-    
+
+    val cameraxVersion = "1.6.0-alpha01"
+    val napierVersion = "2.7.1"
+
+
+
     sourceSets.commonMain {
         kotlin.srcDir("build/generated/ksp/metadata")
     }
-    
+
     sourceSets {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
+            implementation("androidx.camera:camera-core:${cameraxVersion}")
+            implementation("androidx.camera:camera-camera2:${cameraxVersion}")
+            implementation("androidx.camera:camera-lifecycle:${cameraxVersion}")
+            implementation("androidx.camera:camera-video:${cameraxVersion}")
+            implementation("androidx.camera:camera-view:${cameraxVersion}")
+            implementation("androidx.camera:camera-mlkit-vision:${cameraxVersion}")
+            implementation("androidx.camera:camera-extensions:${cameraxVersion}")
             implementation(libs.ktor.client.android)
             implementation(libs.androidx.work.runtime)
         }
@@ -57,6 +70,13 @@ kotlin {
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation("network.chaintech:cmpcharts:1.0.0")
+
+            //log
+            implementation("io.github.aakira:napier:${napierVersion}")
+
+
+
+
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

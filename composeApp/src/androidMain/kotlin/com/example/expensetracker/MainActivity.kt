@@ -12,19 +12,21 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.example.expensetracker.data.database.AndroidDatabaseContext
 import com.example.expensetracker.data.worker.ExchangeRateRefreshWorker
-import androidx.core.content.ContextCompat
+import com.example.expensetracker.services.AndroidCameraService
+import com.example.expensetracker.services.initializeNapier
 import com.example.theme.com.example.expensetracker.ThemeProvider
+import io.github.aakira.napier.Napier
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
-        // Initialize database context for Android
-        AndroidDatabaseContext.init(this)
-        
         // Initialize database early to ensure migrations run
         // This triggers database creation and applies migrations if needed
         android.util.Log.d("MainActivity", "Initializing database...")
@@ -36,7 +38,7 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) {
             android.util.Log.e("MainActivity", "Error initializing database", e)
         }
-        
+
         // Initialize and schedule background exchange rate refresh
         try {
             ExchangeRateRefreshWorker.initialize(this)
@@ -45,35 +47,52 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) {
             android.util.Log.e("MainActivity", "Error scheduling exchange rate refresh", e)
         }
-        //create a logger instance
-//        AndroidLogcatLogger.installOnDebuggableApp(this, minPriority = VERBOSE)
 
         appContext = this
 
-
         requestNecessaryPermissions()
 
-        setContent {
-            ThemeProvider {
-                AppContent()
-            }
+        initializeNapier()
+        Napier.d("App initialized", tag = "DDD")
+
+        // Initialize database context for Android
+        AndroidDatabaseContext.init(this)
+
+        // Initialize camera only if permission is already granted
+        // Otherwise, it will be initialized when permission is granted
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
+                        PackageManager.PERMISSION_GRANTED
+        ) {
+            initializeCamera()
+        } else {
+            println(
+                    "📷 Camera permission not granted yet, will initialize after permission is granted"
+            )
         }
+
+        setContent { ThemeProvider { AppContent() } }
     }
 
     // Handles what happens after the permission is Granted / Denied
     private val permissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
-            permissions.entries.forEach { entry ->
-                val permission = entry.key
-                val isGranted = entry.value
-                if (isGranted) {
-                    println("✅ Permission granted: $permission")
-                } else {
-                    println("❌ Permission denied: $permission")
+            registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+                    permissions ->
+                permissions.entries.forEach { entry ->
+                    val permission = entry.key
+                    val isGranted = entry.value
+                    if (isGranted) {
+                        println("✅ Permission granted: $permission")
+                        // Initialize camera if camera permission was just granted
+                        if (permission == Manifest.permission.CAMERA) {
+                            println("📷 Camera permission granted, initializing camera...")
+                            initializeCamera()
+                        }
+                    } else {
+                        println("❌ Permission denied: $permission")
+                    }
                 }
             }
-        }
-    
+
     // permission request popup that should happen at the start of app
     // should also implement to popup if microphone disabled and click in stgs
     private fun requestNecessaryPermissions() {
@@ -83,14 +102,14 @@ class MainActivity : ComponentActivity() {
 
             // Check Camera permission
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) !=
-                PackageManager.PERMISSION_GRANTED
+                            PackageManager.PERMISSION_GRANTED
             ) {
                 permissionsToRequest.add(Manifest.permission.CAMERA)
             }
 
             // Check Microphone (RECORD_AUDIO) permission
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) !=
-                PackageManager.PERMISSION_GRANTED
+                            PackageManager.PERMISSION_GRANTED
             ) {
                 permissionsToRequest.add(Manifest.permission.RECORD_AUDIO)
             }
@@ -99,17 +118,29 @@ class MainActivity : ComponentActivity() {
             if (permissionsToRequest.isNotEmpty()) {
                 permissionLauncher.launch(permissionsToRequest.toTypedArray())
             } else {
-                println("✅ All permissions already granted")
+                Napier.d("All permission granted", tag = "DDD")
             }
         }
     }
 
     fun requestMicrophonePermission() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) !=
+                        PackageManager.PERMISSION_GRANTED
+        ) {
             println("🎤 Requesting microphone permission via Settings")
             permissionLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
         } else {
             println("🎤 Microphone permission already granted")
+        }
+    }
+
+    private fun initializeCamera() {
+        try {
+            val cameraService = AndroidCameraService.getInstance(this)
+            // Start camera in coroutine
+            lifecycleScope.launch { cameraService.startCamera(this@MainActivity) }
+        } catch (e: Exception) {
+            println("❌ Error initializing camera: ${e.message}")
         }
     }
     companion object {
