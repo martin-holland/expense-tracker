@@ -6,6 +6,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.DirectionsCar
@@ -578,7 +579,264 @@ private fun VoiceInputSection(voiceViewModel: VoiceInputViewModel = viewModel())
                             if (getMicrophoneService().hasMicrophonePermission()) accentGreen
                             else Color(0xFFFF6B6B)
             )
+
+            // NEW: Speech Recognition Section
+            Spacer(Modifier.height(24.dp))
+            SpeechRecognitionSection(voiceViewModel = voiceViewModel, accentGreen = accentGreen)
         }
+    }
+}
+
+@Composable
+private fun SpeechRecognitionSection(voiceViewModel: VoiceInputViewModel, accentGreen: Color) {
+    val speechState by voiceViewModel.speechRecognitionState.collectAsState()
+    val partialTranscription by voiceViewModel.partialTranscription.collectAsState()
+    val appColors = LocalAppColors.current
+
+    Column {
+        Text(
+                "Live Transcription (POC)",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = AppColors.foreground
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        // Transcription display
+        Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors =
+                        CardDefaults.cardColors(containerColor = appColors.muted.copy(alpha = 0.2f))
+        ) {
+            Box(modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp).padding(16.dp)) {
+                when (val state = speechState) {
+                    is VoiceInputViewModel.SpeechRecognitionState.Idle -> {
+                        Text(
+                                "Tap 'Start Live Transcription' to begin",
+                                color = appColors.mutedForeground,
+                                style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    is VoiceInputViewModel.SpeechRecognitionState.Listening -> {
+                        Column {
+                            Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp,
+                                        color = accentGreen
+                                )
+                                Text(
+                                        "Listening...",
+                                        color = accentGreen,
+                                        fontWeight = FontWeight.Medium
+                                )
+                            }
+
+                            if (partialTranscription.isNotBlank()) {
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                        partialTranscription,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                )
+                            }
+                        }
+                    }
+                    is VoiceInputViewModel.SpeechRecognitionState.Success -> {
+                        Column {
+                            Row(
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                        "✓ Transcribed",
+                                        color = Color(0xFF10B981),
+                                        fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                        "Confidence: ${(state.confidence * 100).toInt()}%",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = appColors.mutedForeground
+                                )
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                    state.transcription,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium
+                            )
+
+                            // Show alternatives if available
+                            if (state.alternatives.size > 1) {
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                        "Alternatives:",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = appColors.mutedForeground
+                                )
+                                state.alternatives.drop(1).take(2).forEach { alt ->
+                                    Text(
+                                            "• $alt",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = appColors.mutedForeground,
+                                            fontStyle =
+                                                    androidx.compose.ui.text.font.FontStyle.Italic
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    is VoiceInputViewModel.SpeechRecognitionState.Error -> {
+                        Column {
+                            Text(
+                                    "❌ Error",
+                                    color = Color(0xFFEF4444),
+                                    fontWeight = FontWeight.Medium
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                    state.message,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color(0xFFEF4444)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // Control buttons - Android-specific implementation will be handled in MainActivity
+        SpeechRecognitionButton(
+                voiceViewModel = voiceViewModel,
+                speechState = speechState,
+                accentGreen = accentGreen
+        )
+
+        // Parse button and results
+        val parsedData by voiceViewModel.parsedExpenseData.collectAsState()
+
+        // Show parse button when we have a successful transcription
+        if (speechState is VoiceInputViewModel.SpeechRecognitionState.Success) {
+            Spacer(Modifier.height(12.dp))
+            Button(
+                    onClick = {
+                        val state =
+                                speechState as VoiceInputViewModel.SpeechRecognitionState.Success
+                        voiceViewModel.parseTranscription(state.transcription)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = appColors.primary),
+                    shape = RoundedCornerShape(8.dp)
+            ) {
+                Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White)
+                Spacer(Modifier.width(8.dp))
+                Text("Extract Expense Data", color = Color.White)
+            }
+        }
+
+        // Show parsed results
+        parsedData?.let { data ->
+            Spacer(Modifier.height(12.dp))
+            ParsedDataCard(data = data, appColors = appColors)
+        }
+    }
+}
+
+@Composable
+expect fun SpeechRecognitionButton(
+        voiceViewModel: VoiceInputViewModel,
+        speechState: VoiceInputViewModel.SpeechRecognitionState,
+        accentGreen: Color
+)
+
+@Composable
+private fun ParsedDataCard(
+    data: com.example.expensetracker.service.ParsedExpenseData,
+    appColors: com.example.theme.com.example.expensetracker.AppColorScheme
+) {
+    Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp),
+            colors =
+                    CardDefaults.cardColors(
+                            containerColor =
+                                    when {
+                                        data.completeness >= 0.8f ->
+                                                Color(0xFF10B981).copy(alpha = 0.1f)
+                                        data.completeness >= 0.5f ->
+                                                Color(0xFFF59E0B).copy(alpha = 0.1f)
+                                        else -> Color(0xFFEF4444).copy(alpha = 0.1f)
+                                    }
+                    )
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                        "Extracted Data",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleSmall
+                )
+                Text(
+                        "Completeness: ${(data.completeness * 100).toInt()}%",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = appColors.mutedForeground
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(8.dp))
+
+            // Show each field
+            ParsedField("Amount", data.amount?.toString() ?: "Not found", appColors)
+            ParsedField("Currency", data.currency?.code ?: "Not found", appColors)
+            ParsedField("Category", data.category?.displayName ?: "Not found", appColors)
+            ParsedField("Description", data.description.ifBlank { "Not found" }, appColors)
+
+            // If usable, show status
+            if (data.isUsable) {
+                Spacer(Modifier.height(12.dp))
+                Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                            "✓ Ready to use",
+                            color = Color(0xFF10B981),
+                            fontWeight = FontWeight.Medium,
+                            style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ParsedField(label: String, value: String, appColors: com.example.theme.com.example.expensetracker.AppColorScheme) {
+    Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = appColors.mutedForeground)
+        Text(
+                value,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (value != "Not found") FontWeight.Medium else FontWeight.Normal,
+                color =
+                        if (value != "Not found") appColors.foreground
+                        else appColors.mutedForeground
+        )
     }
 }
 
