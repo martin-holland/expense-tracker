@@ -40,6 +40,8 @@ actual fun getRoomDatabase(): ExpenseDatabase {
     return databaseInstance ?: synchronized(AndroidDatabaseContext) {
         databaseInstance ?: createDatabase(
             getDatabaseBuilder()
+                // Proper migrations are defined in DatabaseMigrations.kt
+                // This ensures data is preserved during schema updates
                 .fallbackToDestructiveMigrationOnDowngrade(true)
         ).also { databaseInstance = it }
     }
