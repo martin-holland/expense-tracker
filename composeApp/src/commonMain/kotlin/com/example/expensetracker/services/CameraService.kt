@@ -8,10 +8,12 @@ package com.example.expensetracker.services
 // }
 
 enum class CameraState {
-    IDLE, // Camera not initialized
-    INITIALIZING, // Camera is being initialized
-    READY, // Camera is ready to take photos
-    CAPTURING, // Currently capturing a photo
+    NOT_INITIALIZED, // Camera not initialized (0% battery)
+    INITIALIZING, // Camera is being initialized (10% battery, 1-2s cold start)
+    READY, // Camera is ready to take photos (100% battery, camera active)
+    CAPTURING, // Currently capturing a photo (100% battery)
+    IDLE, // Camera in warm state, ready for quick resume (5% battery, 30s timeout)
+    RELEASED, // Camera released after timeout (0% battery)
     ERROR // Error state
 }
 
@@ -23,7 +25,8 @@ interface CameraService {
     fun getCameraState(): CameraState
     suspend fun ensureCameraInitialized(): Boolean
     suspend fun startCamera(lifecycleOwner: Any): Boolean
-    suspend fun stopCamera()
+    suspend fun pauseCamera() // Move to IDLE (warm state, 5% battery)
+    suspend fun stopCamera() // Full release to NOT_INITIALIZED
 }
 
 expect fun getCameraService(): CameraService

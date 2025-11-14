@@ -54,27 +54,38 @@ fun CameraScreen() {
     val hasPermission = cameraService.hasCameraPermission()
 
     // Start camera when screen is displayed (only if permission is granted)
-    // This LaunchedEffect runs when the composable is displayed or when permission changes
+    // Supports instant resume from IDLE state!
     LaunchedEffect(hasPermission) {
-        if (hasPermission && cameraService.getCameraState() == CameraState.IDLE) {
-            println("📷 CameraScreen: Starting camera initialization...")
-            cameraState = CameraState.INITIALIZING
-            val started = cameraService.startCamera(lifecycleOwner)
-            cameraState = cameraService.getCameraState()
-            if (started) {
-                println("✅ CameraScreen: Camera started successfully")
-            } else {
-                println("❌ CameraScreen: Failed to start camera")
+        if (hasPermission) {
+            val currentState = cameraService.getCameraState()
+            if (currentState == CameraState.NOT_INITIALIZED || currentState == CameraState.RELEASED) {
+                println("📷 CameraScreen: Starting camera initialization (cold start)...")
+                cameraState = CameraState.INITIALIZING
+                val started = cameraService.startCamera(lifecycleOwner)
+                cameraState = cameraService.getCameraState()
+                if (started) {
+                    println("✅ CameraScreen: Camera started successfully")
+                } else {
+                    println("❌ CameraScreen: Failed to start camera")
+                }
+            } else if (currentState == CameraState.IDLE) {
+                println("🔄 CameraScreen: Resuming from IDLE (instant resume)...")
+                cameraState = CameraState.IDLE // Show we're resuming
+                val started = cameraService.startCamera(lifecycleOwner)
+                cameraState = cameraService.getCameraState()
+                if (started) {
+                    println("✅ CameraScreen: Camera resumed instantly")
+                }
             }
         }
     }
 
-    // Stop camera when screen is disposed (when user navigates away or closes camera)
+    // Pause camera when screen is disposed (moves to IDLE with 30s timeout)
     DisposableEffect(Unit) {
         onDispose {
-            println("🛑 CameraScreen: Disposing, stopping camera...")
+            println("⏸️ CameraScreen: Disposing, pausing camera (IDLE state with 30s timeout)...")
             scope.launch { 
-                cameraService.stopCamera()
+                cameraService.pauseCamera()
                 cameraState = cameraService.getCameraState()
             }
         }
@@ -92,14 +103,8 @@ fun CameraScreen() {
                 ?: run { imageBitmap = null }
     }
     
-    // Stop camera after photo is captured
-    LaunchedEffect(photoData) {
-        if (photoData != null) {
-            println("📸 CameraScreen: Photo captured, stopping camera to save resources...")
-            cameraService.stopCamera()
-            cameraState = cameraService.getCameraState()
-        }
-    }
+    // NOTE: Camera stays READY after photo capture (diagram requirement)
+    // User must explicitly close camera to enter IDLE state
 
     Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -141,6 +146,12 @@ fun CameraScreen() {
                                     "(${photoData!!.size} bytes)",
                                     style = MaterialTheme.typography.bodySmall
                             )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                    "Camera still ready for more photos",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.secondary
+                            )
                         }
                     }
                     cameraState == CameraState.INITIALIZING -> {
@@ -159,7 +170,7 @@ fun CameraScreen() {
                                     color = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                    "This may take a few seconds",
+                                    "Cold start: 1-2 seconds",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -178,9 +189,34 @@ fun CameraScreen() {
                                     color = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                    "Tap 'Take Photo' to capture",
+                                    "100% battery - Camera active",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    cameraState == CameraState.IDLE -> {
+                        Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                        ) {
+                            Text("⏸️", style = MaterialTheme.typography.displayLarge)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                    "Camera Idle (Warm)",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.secondary
+                            )
+                            Text(
+                                    "5% battery - Quick resume available",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                    "Auto-release in 30s",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.tertiary
                             )
                         }
                     }
@@ -197,7 +233,7 @@ fun CameraScreen() {
                                     color = MaterialTheme.colorScheme.error
                             )
                             Text(
-                                    "Try restarting the camera",
+                                    "Try restarting the app",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -208,14 +244,14 @@ fun CameraScreen() {
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                         ) {
-                            Text("📸", style = MaterialTheme.typography.displayLarge)
+                            Text("🌙", style = MaterialTheme.typography.displayLarge)
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                    "Camera Idle",
+                                    "Camera Not Initialized",
                                     style = MaterialTheme.typography.bodyLarge
                             )
                             Text(
-                                    "Waiting to initialize...",
+                                    "0% battery - Ready to start",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -228,8 +264,8 @@ fun CameraScreen() {
         Spacer(modifier = Modifier.height(8.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // Take Photo button (only shown when camera is ready)
-            if (cameraState == CameraState.READY) {
+            // Take Photo button (only shown when camera is ready and no photo taken)
+            if (cameraState == CameraState.READY && photoData == null) {
                 Button(
                         onClick = {
                             scope.launch {
@@ -242,6 +278,8 @@ fun CameraScreen() {
                                     
                                     if (photoData == null) {
                                         println("⚠️ Camera: Photo capture returned null")
+                                    } else {
+                                        println("✅ Camera: Photo captured, camera stays READY for more photos")
                                     }
                                 } catch (e: Exception) {
                                     println("❌ Camera: Error taking photo: ${e.message}")
@@ -268,21 +306,13 @@ fun CameraScreen() {
                 }
             }
             
-            // Restart Camera button (shown when camera is stopped after photo)
-            if (cameraState == CameraState.IDLE && photoData != null) {
+            // Retake Photo button (shown when photo exists and camera is ready)
+            if (photoData != null && cameraState == CameraState.READY) {
                 Button(
                         onClick = {
-                            scope.launch {
-                                println("🔄 CameraScreen: Restarting camera...")
-                                cameraState = CameraState.INITIALIZING
-                                val started = cameraService.startCamera(lifecycleOwner)
-                                cameraState = cameraService.getCameraState()
-                                if (started) {
-                                    println("✅ CameraScreen: Camera restarted successfully")
-                                } else {
-                                    println("❌ CameraScreen: Failed to restart camera")
-                                }
-                            }
+                            photoData = null
+                            imageBitmap = null
+                            println("🔄 Camera: Photo cleared, ready to take another (camera stays READY)")
                         },
                         colors =
                                 ButtonDefaults.buttonColors(
@@ -291,12 +321,34 @@ fun CameraScreen() {
                 ) {
                     Text("🔄")
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Restart Camera")
+                    Text("Retake Photo")
+                }
+            }
+            
+            // Close Camera button (pauses to IDLE state with 30s timeout)
+            if (cameraState == CameraState.READY || cameraState == CameraState.CAPTURING) {
+                Button(
+                        onClick = {
+                            scope.launch {
+                                println("⏸️ CameraScreen: User closing camera, entering IDLE state...")
+                                cameraService.pauseCamera()
+                                cameraState = cameraService.getCameraState()
+                            }
+                        },
+                        enabled = !isProcessing,
+                        colors =
+                                ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.tertiary
+                                )
+                ) {
+                    Text("⏸️")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Close Camera")
                 }
             }
 
-            // Clear button (shown when photo exists)
-            if (photoData != null) {
+            // Clear Photo button (alternative action when photo exists)
+            if (photoData != null && cameraState == CameraState.READY) {
                 Button(
                         onClick = {
                             photoData = null
