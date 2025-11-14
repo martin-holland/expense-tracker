@@ -47,6 +47,7 @@ import kotlinx.datetime.*
 @Composable
 fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
     val voiceViewModel: VoiceInputViewModel = viewModel<VoiceInputViewModel>()
+    val settingsViewModel: com.example.expensetracker.viewmodel.SettingsViewModel = viewModel()
 
     val appColors = LocalAppColors.current
     val accentGreen = appColors.chart2
@@ -358,7 +359,7 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
             }
         }
         Spacer(Modifier.height(20.dp))
-        VoiceInputSection(voiceViewModel = voiceViewModel)
+        VoiceInputSection(voiceViewModel = voiceViewModel, settingsViewModel = settingsViewModel)
 
         Spacer(Modifier.height(40.dp))
         Button(
@@ -445,18 +446,93 @@ private fun SectionCard(title: String, content: @Composable ColumnScope.() -> Un
 }
 
 @Composable
-private fun VoiceInputSection(voiceViewModel: VoiceInputViewModel = viewModel()) {
+private fun VoiceInputSection(
+    voiceViewModel: VoiceInputViewModel = viewModel(),
+    settingsViewModel: com.example.expensetracker.viewmodel.SettingsViewModel = viewModel()
+) {
     val isRecording by voiceViewModel.isRecording.collectAsState()
     val audioData by voiceViewModel.audioData.collectAsState()
     val isProcessing by voiceViewModel.isProcessing.collectAsState()
     val errorMessage by voiceViewModel.errorMessage.collectAsState()
     val showVoiceSection by voiceViewModel.showVoiceSection.collectAsState()
+    val isVoiceInputEnabled by settingsViewModel.isVoiceInputEnabled.collectAsState()
+    val hasMicrophonePermission by settingsViewModel.hasMicrophonePermission.collectAsState()
 
     val appColors = LocalAppColors.current
     val accentGreen = appColors.chart2
 
     if (showVoiceSection) {
         SectionCard(title = "Voice Input") {
+            // Show enable voice input message if disabled
+            if (!isVoiceInputEnabled) {
+                Card(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF4E6)),
+                        border = BorderStroke(1.dp, Color(0xFFFFA726))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                                "⚠️ Voice input is disabled",
+                                color = Color(0xFFE65100),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        Text(
+                                "Enable voice input in Settings to use this feature",
+                                color = Color(0xFFE65100),
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Button(
+                                onClick = { 
+                                    settingsViewModel.toggleVoiceInput(true)
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFA726)),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Enable Voice Input", color = Color.White, fontSize = 14.sp)
+                        }
+                    }
+                }
+            }
+            
+            // Show permission message if no permission
+            if (isVoiceInputEnabled && !hasMicrophonePermission) {
+                Card(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
+                        border = BorderStroke(1.dp, Color(0xFFEF5350))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                                "🎤 Microphone permission required",
+                                color = Color(0xFFC62828),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        Text(
+                                "Grant microphone permission to record audio",
+                                color = Color(0xFFC62828),
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Button(
+                                onClick = { 
+                                    getMicrophoneService().requestMicrophonePermission()
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF5350)),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Grant Permission", color = Color.White, fontSize = 14.sp)
+                        }
+                    }
+                }
+            }
+            
             errorMessage?.let { error ->
                 Text(
                         error,
@@ -508,7 +584,7 @@ private fun VoiceInputSection(voiceViewModel: VoiceInputViewModel = viewModel())
                                             if (isRecording) Color(0xFFFF6B6B) else accentGreen
                             ),
                     shape = RoundedCornerShape(10.dp),
-                    enabled = !isProcessing
+                    enabled = !isProcessing && isVoiceInputEnabled && hasMicrophonePermission
             ) {
                 if (isProcessing) {
                     CircularProgressIndicator(
@@ -568,16 +644,25 @@ private fun VoiceInputSection(voiceViewModel: VoiceInputViewModel = viewModel())
                 }
             }
 
-            // Permission Status
-            Spacer(Modifier.height(8.dp))
-            Text(
-                    text =
-                            "Microphone Permission: ${if (getMicrophoneService().hasMicrophonePermission()) "Granted" else "Not Granted"}",
-                    fontSize = 12.sp,
-                    color =
-                            if (getMicrophoneService().hasMicrophonePermission()) accentGreen
-                            else Color(0xFFFF6B6B)
-            )
+            // Status indicators
+            if (isVoiceInputEnabled && hasMicrophonePermission) {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                            text = "✅",
+                            fontSize = 12.sp
+                    )
+                    Text(
+                            text = "Voice input ready",
+                            fontSize = 12.sp,
+                            color = accentGreen,
+                            fontWeight = FontWeight.Medium
+                    )
+                }
+            }
         }
     }
 }

@@ -3,6 +3,7 @@ package com.example.expensetracker.data.database
 import androidx.room.TypeConverter
 import com.example.expensetracker.model.Currency
 import com.example.expensetracker.model.ExpenseCategory
+import com.example.expensetracker.model.ThemeOption
 import kotlinx.datetime.LocalDateTime
 
 /**
@@ -58,6 +59,22 @@ class Converters {
     @TypeConverter
     fun toCurrency(value: String?): Currency? {
         return value?.let { Currency.fromCode(it) }
+    }
+    
+    /**
+     * Converts ThemeOption enum to its string name for database storage
+     */
+    @TypeConverter
+    fun fromThemeOption(value: ThemeOption?): String? {
+        return value?.name
+    }
+    
+    /**
+     * Converts string from database to ThemeOption enum
+     */
+    @TypeConverter
+    fun toThemeOption(value: String?): ThemeOption? {
+        return value?.let { ThemeOption.valueOf(it) }
     }
 }
 

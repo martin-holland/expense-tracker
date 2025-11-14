@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.expensetracker.model.AppSettings
 import com.example.expensetracker.model.Currency
+import com.example.expensetracker.model.ThemeOption
 import kotlinx.datetime.LocalDateTime
 
 /**
@@ -17,6 +18,8 @@ import kotlinx.datetime.LocalDateTime
  * @property lastExchangeRateUpdate Timestamp of last exchange rate update (nullable)
  * @property exchangeRateApiKey API key for exchange rate service
  * @property exchangeRateApiBaseUrl Base URL for exchange rate API
+ * @property themeOption Theme preference (LIGHT, DARK, or SYSTEM)
+ * @property isVoiceInputEnabled Whether voice input is enabled
  * 
  * Note: Refresh interval is fixed at 24 hours - not stored in database
  */
@@ -27,7 +30,9 @@ data class SettingsEntity(
     val baseCurrency: Currency,
     val lastExchangeRateUpdate: LocalDateTime?,
     val exchangeRateApiKey: String,
-    val exchangeRateApiBaseUrl: String
+    val exchangeRateApiBaseUrl: String,
+    val themeOption: ThemeOption = ThemeOption.SYSTEM,
+    val isVoiceInputEnabled: Boolean = false
 )
 
 /**
@@ -38,7 +43,9 @@ fun SettingsEntity.toAppSettings(): AppSettings {
         baseCurrency = baseCurrency,
         lastExchangeRateUpdate = lastExchangeRateUpdate,
         exchangeRateApiKey = exchangeRateApiKey,
-        exchangeRateApiBaseUrl = exchangeRateApiBaseUrl
+        exchangeRateApiBaseUrl = exchangeRateApiBaseUrl,
+        themeOption = themeOption,
+        isVoiceInputEnabled = isVoiceInputEnabled
     )
 }
 
@@ -51,7 +58,9 @@ fun AppSettings.toEntity(): SettingsEntity {
         baseCurrency = baseCurrency,
         lastExchangeRateUpdate = lastExchangeRateUpdate,
         exchangeRateApiKey = exchangeRateApiKey,
-        exchangeRateApiBaseUrl = exchangeRateApiBaseUrl
+        exchangeRateApiBaseUrl = exchangeRateApiBaseUrl,
+        themeOption = themeOption,
+        isVoiceInputEnabled = isVoiceInputEnabled
     )
 }
 
