@@ -1,12 +1,24 @@
+# Expense Tracker
+
 Kotlin Multiplatform Compose project targeting Android and iOS.
 
-Project layout
+## Features
+
+- 📊 **Expense History** - View and manage all your expenses
+- 🏷️ **Categories** - Food, Travel, Utilities, and Other
+- 💱 **Multi-Currency** - Support for 12 major currencies
+- 🗄️ **Room Database** - Persistent storage using Room KMP
+- 🔄 **Reactive UI** - Real-time updates with Kotlin Flow
+- 📱 **Cross-Platform** - Shared codebase for Android & iOS
+
+## Project Layout
 
 - `composeApp/`: shared Kotlin code (UI and logic)
 - `composeApp/src/commonMain`: code shared by all targets
 - `composeApp/src/androidMain`: Android-specific code (entry activity)
 - `composeApp/src/iosMain`: iOS-specific code (root view controller)
 - `iosApp/iosApp`: Xcode project (iOS app entry point and SwiftUI wrapper)
+- `docs/`: comprehensive documentation
 
 Prerequisites
 
@@ -58,14 +70,99 @@ Notes
 - On first iOS build, Gradle compiles the Kotlin framework consumed by Xcode
 - If code-signing is required for device, set your team in Xcode project settings
 
-Where to add code
+## Architecture
+
+The app follows **MVVM** (Model-View-ViewModel) architecture with **Repository Pattern**:
+
+- **View Layer**: Jetpack Compose UI (shared across platforms)
+- **ViewModel Layer**: State management and business logic
+- **Repository Layer**: Data access abstraction
+- **Data Layer**: Room database (KMP) for persistent storage
+
+```
+View (Compose) → ViewModel → Repository → Room DAO → Database
+```
+
+## Database Implementation
+
+This app uses **Room KMP** for cross-platform persistent storage.
+
+### Key Features:
+- ✅ Shared database for Android & iOS
+- ✅ Automatic seeding with sample data on first launch
+- ✅ Reactive data updates via Kotlin Flow
+- ✅ Type-safe queries
+- ✅ Repository pattern for clean architecture
+
+### Quick Start (For Developers):
+
+```kotlin
+// Get repository instance
+val repository = ExpenseRepository.getInstance()
+
+// Observe all expenses (reactive)
+viewModelScope.launch {
+    repository.getAllExpenses()
+        .collect { expenses ->
+            // Update UI
+        }
+}
+
+// Add/Update expense
+viewModelScope.launch {
+    repository.insertExpense(expense)
+}
+
+// Delete expense
+viewModelScope.launch {
+    repository.deleteExpense(expense)
+}
+```
+
+**📖 Full Documentation:** See [ROOM_DATABASE_IMPLEMENTATION.md](docs/ROOM_DATABASE_IMPLEMENTATION.md) for complete guide including:
+- Architecture details
+- Platform-specific setup
+- Usage examples
+- Migration strategies
+- Best practices
+
+## Where to Add Code
 
 - Shared UI/logic: `composeApp/src/commonMain/kotlin`
 - Android-only: `composeApp/src/androidMain/kotlin`
 - iOS-only: `composeApp/src/iosMain/kotlin` and Swift in `iosApp/iosApp`
+- Database: `composeApp/src/commonMain/kotlin/com/example/expensetracker/data/`
 
-Helpful links
+## Documentation
 
+- [Room Database Implementation Guide](docs/ROOM_DATABASE_IMPLEMENTATION.md) - Complete database usage guide
+- [Room KMP iOS Updates](docs/ROOM_KMP_IOS_UPDATES.md) - Latest iOS best practices & updates
+- [Room Advanced Features](docs/ROOM_ADVANCED_FEATURES.md) - Transactions, limitations & future features **NEW!**
+- [Implementation Status](docs/ROOM_IMPLEMENTATION_STATUS.md) - Current platform status
+- [Expense History Implementation](docs/EXPENSE_HISTORY_IMPLEMENTATION.md) - UI implementation details
+
+## 🚀 Getting Started
+
+**Quick Start:** See [Android Studio Setup Guide](docs/ANDROID_STUDIO_SETUP.md) for step-by-step instructions!
+
+📊 **[Build Status & Verification](BUILD_STATUS.md)** - Latest build results and setup verification
+
+### Run on Android:
+1. Open project in Android Studio
+2. Select "composeApp" configuration
+3. Click Run (▶️)
+4. Database auto-seeds with sample data on first launch
+
+### Run on iOS:
+- Code is ready and configured
+- Waiting on Room KMP stable release (expected Q1 2026)
+- See [setup guide](docs/ANDROID_STUDIO_SETUP.md) for details
+
+## Helpful Links
+
+- **[Android Studio Setup Guide](docs/ANDROID_STUDIO_SETUP.md)** - How to run the app ⭐
 - Kotlin Multiplatform basics: https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html
+- Room KMP Documentation: https://developer.android.com/kotlin/multiplatform/room
+- Compose Multiplatform: https://www.jetbrains.com/lp/compose-multiplatform/
 
-#
+##
