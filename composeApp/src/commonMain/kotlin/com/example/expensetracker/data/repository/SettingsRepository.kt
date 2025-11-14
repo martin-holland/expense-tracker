@@ -6,6 +6,7 @@ import com.example.expensetracker.data.database.toAppSettings
 import com.example.expensetracker.data.database.toEntity
 import com.example.expensetracker.model.AppSettings
 import com.example.expensetracker.model.Currency
+import com.example.expensetracker.model.ThemeOption
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -194,6 +195,74 @@ class SettingsRepository private constructor(
      */
     suspend fun saveSettings(settings: AppSettings) {
         settingsDao.insertOrUpdateSettings(settings.toEntity())
+    }
+    
+    /**
+     * Gets the theme option as a Flow
+     * The Flow will emit updates whenever the theme option changes
+     */
+    fun getThemeOption(): Flow<ThemeOption> {
+        return settingsDao.getSettings().map { entity ->
+            entity?.toAppSettings()?.themeOption ?: ThemeOption.SYSTEM
+        }
+    }
+    
+    /**
+     * Gets the theme option synchronously (for one-time reads)
+     * @return The current theme option, or SYSTEM if not found
+     */
+    suspend fun getThemeOptionSync(): ThemeOption {
+        return getSettingsSync().themeOption
+    }
+    
+    /**
+     * Updates the theme option
+     * @param themeOption The theme option to set (LIGHT, DARK, or SYSTEM)
+     */
+    suspend fun updateThemeOption(themeOption: ThemeOption) {
+        settingsDao.updateThemeOption(themeOption.name)
+    }
+    
+    /**
+     * Sets the theme option (alias for updateThemeOption for consistency)
+     * @param themeOption The theme option to set
+     */
+    suspend fun setThemeOption(themeOption: ThemeOption) {
+        updateThemeOption(themeOption)
+    }
+    
+    /**
+     * Gets the voice input enabled flag as a Flow
+     * The Flow will emit updates whenever the voice input enabled flag changes
+     */
+    fun getVoiceInputEnabled(): Flow<Boolean> {
+        return settingsDao.getSettings().map { entity ->
+            entity?.toAppSettings()?.isVoiceInputEnabled ?: false
+        }
+    }
+    
+    /**
+     * Gets the voice input enabled flag synchronously (for one-time reads)
+     * @return The current voice input enabled flag, or false if not found
+     */
+    suspend fun getVoiceInputEnabledSync(): Boolean {
+        return getSettingsSync().isVoiceInputEnabled
+    }
+    
+    /**
+     * Updates the voice input enabled flag
+     * @param isEnabled Whether voice input is enabled
+     */
+    suspend fun updateVoiceInputEnabled(isEnabled: Boolean) {
+        settingsDao.updateVoiceInputEnabled(isEnabled)
+    }
+    
+    /**
+     * Sets the voice input enabled flag (alias for updateVoiceInputEnabled for consistency)
+     * @param isEnabled Whether voice input is enabled
+     */
+    suspend fun setVoiceInputEnabled(isEnabled: Boolean) {
+        updateVoiceInputEnabled(isEnabled)
     }
     
     /**

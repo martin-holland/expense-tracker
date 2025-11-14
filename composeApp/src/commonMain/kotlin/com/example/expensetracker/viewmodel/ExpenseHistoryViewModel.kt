@@ -78,9 +78,13 @@ class ExpenseHistoryViewModel(
     private fun observeBaseCurrency() {
         settingsRepository
                 .getBaseCurrency()
-                .onEach { baseCurrency ->
+                .onEach { _ ->
                     // Reconvert expenses when base currency changes
-                    convertExpenses()
+                    // Note: We don't use the currency parameter directly because
+                    // convertExpenses() fetches the current base currency synchronously
+                    println("💱 Base currency changed, reconverting expenses...")
+                    // Launch coroutine to convert expenses with current list
+                    viewModelScope.launch { convertExpenses(uiState.expenses) }
                 }
                 .catch { e -> println("Error observing base currency: ${e.message}") }
                 .launchIn(viewModelScope)
@@ -90,6 +94,10 @@ class ExpenseHistoryViewModel(
     private suspend fun convertExpenses(expenses: List<Expense>? = null) {
         val expensesToConvert = expenses ?: uiState.expenses
         val baseCurrency = settingsRepository.getBaseCurrencySync()
+
+        println(
+                "💱 Converting ${expensesToConvert.size} expenses to base currency: ${baseCurrency.code}"
+        )
 
         val converted =
                 expensesToConvert.map { expense ->
@@ -113,6 +121,7 @@ class ExpenseHistoryViewModel(
                 }
 
         _convertedExpenses.value = converted
+        println("💱 Conversion complete. Emitting ${converted.size} converted expenses")
     }
 
     /** Toggles showing converted amounts */

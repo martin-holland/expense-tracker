@@ -35,6 +35,8 @@ private var databaseInstance: ExpenseDatabase? = null
 actual fun getRoomDatabase(): ExpenseDatabase {
     return databaseInstance ?: createDatabase(
         getDatabaseBuilder()
+            // Proper migrations are defined in DatabaseMigrations.kt
+            // This ensures data is preserved during schema updates
             .fallbackToDestructiveMigrationOnDowngrade(true)
     ).also { databaseInstance = it }
 }
