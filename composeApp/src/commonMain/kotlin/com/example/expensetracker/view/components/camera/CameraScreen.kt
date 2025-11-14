@@ -20,6 +20,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,11 +33,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.expensetracker.services.CameraState
 import com.example.expensetracker.services.decodeByteArrayToImageBitmap
 import com.example.expensetracker.services.getCameraService
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
 
 @Composable
 fun CameraScreen() {
@@ -44,39 +45,53 @@ fun CameraScreen() {
     var photoData by remember { mutableStateOf<ByteArray?>(null) }
     var imageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     var isProcessing by remember { mutableStateOf(false) }
-    var isCameraOn by remember { mutableStateOf(false) }
+    var cameraState by remember { mutableStateOf(cameraService.getCameraState()) }
     val scope = rememberCoroutineScope()
 
-    // Add this state to trigger recomposition when permissions change
-    var permissionCheck by remember { mutableStateOf(0) }
-    var cameraInitAttempted by remember { mutableStateOf(false) }
+    // Get lifecycle owner for camera binding
+    val lifecycleOwner = LocalLifecycleOwner.current
 
-    // Force recomposition when permissions might have changed
-    LaunchedEffect(Unit) {
-        // This will make the composable check permission state again
-        permissionCheck++
+    val hasPermission = cameraService.hasCameraPermission()
+
+    // Start camera when screen is displayed (only if permission is granted)
+    // Supports instant resume from IDLE state!
+    LaunchedEffect(hasPermission) {
+        if (hasPermission) {
+            val currentState = cameraService.getCameraState()
+            if (currentState == CameraState.NOT_INITIALIZED || currentState == CameraState.RELEASED) {
+                println("📷 CameraScreen: Starting camera initialization (cold start)...")
+                cameraState = CameraState.INITIALIZING
+                val started = cameraService.startCamera(lifecycleOwner)
+                cameraState = cameraService.getCameraState()
+                if (started) {
+                    println("✅ CameraScreen: Camera started successfully")
+                } else {
+                    println("❌ CameraScreen: Failed to start camera")
+                }
+            } else if (currentState == CameraState.IDLE) {
+                println("🔄 CameraScreen: Resuming from IDLE (instant resume)...")
+                cameraState = CameraState.IDLE // Show we're resuming
+                val started = cameraService.startCamera(lifecycleOwner)
+                cameraState = cameraService.getCameraState()
+                if (started) {
+                    println("✅ CameraScreen: Camera resumed instantly")
+                }
+            }
+        }
     }
 
-    // Your existing code, but update the permission check:
-    val hasPermission = cameraService.hasCameraPermission()
-    val isCameraReady = cameraService.isCameraReady()
-
-    // Try to ensure camera is initialized when screen is shown
-    LaunchedEffect(hasPermission, cameraInitAttempted) {
-        if (hasPermission && !isCameraReady && !cameraInitAttempted) {
-            cameraInitAttempted = true
-            println("📷 CameraScreen: Camera not ready, attempting to ensure initialization...")
-            // Give a moment for MainActivity to initialize if it's in progress
-            delay(500)
-            val initialized = cameraService.ensureCameraInitialized()
-            if (!initialized) {
-                println("⚠️ CameraScreen: Camera initialization check failed. Camera may need to be initialized in MainActivity.")
+    // Pause camera when screen is disposed (moves to IDLE with 30s timeout)
+    DisposableEffect(Unit) {
+        onDispose {
+            println("⏸️ CameraScreen: Disposing, pausing camera (IDLE state with 30s timeout)...")
+            scope.launch { 
+                cameraService.pauseCamera()
+                cameraState = cameraService.getCameraState()
             }
         }
     }
 
     // Convert byte array to ImageBitmap when photo data changes
-
     LaunchedEffect(photoData) {
         photoData?.let { bytes ->
             try {
@@ -85,160 +100,282 @@ fun CameraScreen() {
                 e.printStackTrace()
             }
         }
-            ?: run { imageBitmap = null }
+                ?: run { imageBitmap = null }
     }
+    
+    // NOTE: Camera stays READY after photo capture (diagram requirement)
+    // User must explicitly close camera to enter IDLE state
 
     Column(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-
-        if (isCameraOn  && hasPermission) {
-            Card(
+        // Camera Preview/Status Card
+        Card(
                 modifier = Modifier.fillMaxWidth().height(300.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                 colors =
-                    CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-            ) {
-
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    when {
-                        imageBitmap != null -> {
-                            Image(
+                        CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+        ) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                when {
+                    imageBitmap != null -> {
+                        Image(
                                 bitmap = imageBitmap!!,
                                 contentDescription = "Captured photo",
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Fit
-                            )
-                        }
-                        photoData != null -> {
-                            Column(
+                        )
+                    }
+                    photoData != null -> {
+                        Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
-                            ) {
-                                Text("✅", style = MaterialTheme.typography.displayMedium)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
+                        ) {
+                            Text("✅", style = MaterialTheme.typography.displayMedium)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
                                     "Photo captured!",
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
+                            )
+                            Text(
                                     "(${photoData!!.size} bytes)",
                                     style = MaterialTheme.typography.bodySmall
-                                )
-                            }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                    "Camera still ready for more photos",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.secondary
+                            )
                         }
-                        else -> {
-                            Column(
+                    }
+                    cameraState == CameraState.INITIALIZING -> {
+                        Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
-                            ) {
-                                Text("📸", style = MaterialTheme.typography.displayLarge)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text("No photo taken yet", style = MaterialTheme.typography.bodyLarge)
-                                Text(
-                                    "Tap 'Take Photo' to start",
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(48.dp),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                    "Initializing camera...",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                    "Cold start: 1-2 seconds",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                            )
+                        }
+                    }
+                    cameraState == CameraState.READY -> {
+                        Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                        ) {
+                            Text("📸", style = MaterialTheme.typography.displayLarge)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                    "Camera Ready",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                    "100% battery - Camera active",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    cameraState == CameraState.IDLE -> {
+                        Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                        ) {
+                            Text("⏸️", style = MaterialTheme.typography.displayLarge)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                    "Camera Idle (Warm)",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.secondary
+                            )
+                            Text(
+                                    "5% battery - Quick resume available",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                    "Auto-release in 30s",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
+                    }
+                    cameraState == CameraState.ERROR -> {
+                        Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                        ) {
+                            Text("❌", style = MaterialTheme.typography.displayMedium)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                    "Camera Error",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.error
+                            )
+                            Text(
+                                    "Try restarting the app",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    else -> {
+                        Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                        ) {
+                            Text("🌙", style = MaterialTheme.typography.displayLarge)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                    "Camera Not Initialized",
+                                    style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                    "0% battery - Ready to start",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
         }
 
-
-        // Show warning if camera is not ready
-        if (!isCameraReady && hasPermission) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-                )
-            ) {
-                Text(
-                    text = "⚠️ Camera not ready. Please wait a moment and try again.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(12.dp)
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-        }
+        Spacer(modifier = Modifier.height(8.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
-                onClick = {
-                    scope.launch {
-                        try {
-                            isProcessing = true
-                            isCameraOn = true
-                            
-                            // Check if camera is ready before taking photo
-                            if (!cameraService.isCameraReady()) {
-                                println("⚠️ Camera: Camera not ready, cannot take photo")
-                                photoData = null
-                                return@launch
+            // Take Photo button (only shown when camera is ready and no photo taken)
+            if (cameraState == CameraState.READY && photoData == null) {
+                Button(
+                        onClick = {
+                            scope.launch {
+                                try {
+                                    isProcessing = true
+                                    cameraState = CameraState.CAPTURING
+
+                                    photoData = cameraService.takePhoto()
+                                    cameraState = cameraService.getCameraState()
+                                    
+                                    if (photoData == null) {
+                                        println("⚠️ Camera: Photo capture returned null")
+                                    } else {
+                                        println("✅ Camera: Photo captured, camera stays READY for more photos")
+                                    }
+                                } catch (e: Exception) {
+                                    println("❌ Camera: Error taking photo: ${e.message}")
+                                    e.printStackTrace()
+                                    photoData = null
+                                    cameraState = cameraService.getCameraState()
+                                } finally {
+                                    isProcessing = false
+                                }
                             }
-                            
-                            photoData = cameraService.takePhoto()
-                            // Reset processing state after photo is taken (or fails)
-                            if (photoData == null) {
-                                println("⚠️ Camera: Photo capture returned null")
-                            }
-                        } catch (e: Exception) {
-                            println("❌ Camera: Error taking photo: ${e.message}")
-                            e.printStackTrace()
-                            photoData = null
-                        } finally {
-                            isProcessing = false
-                        }
+                        },
+                        enabled = !isProcessing && hasPermission
+                ) {
+                    if (isProcessing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = Color.White
+                        )
+                    } else {
+                        Text("📷")
                     }
-                },
-                enabled = !isProcessing && hasPermission && isCameraReady
-            ) {
-                if (isProcessing) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
-                } else {
-                    Text("📷")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Take Photo")
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Take Photo")
+            }
+            
+            // Retake Photo button (shown when photo exists and camera is ready)
+            if (photoData != null && cameraState == CameraState.READY) {
+                Button(
+                        onClick = {
+                            photoData = null
+                            imageBitmap = null
+                            println("🔄 Camera: Photo cleared, ready to take another (camera stays READY)")
+                        },
+                        colors =
+                                ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary
+                                )
+                ) {
+                    Text("🔄")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Retake Photo")
+                }
+            }
+            
+            // Close Camera button (pauses to IDLE state with 30s timeout)
+            if (cameraState == CameraState.READY || cameraState == CameraState.CAPTURING) {
+                Button(
+                        onClick = {
+                            scope.launch {
+                                println("⏸️ CameraScreen: User closing camera, entering IDLE state...")
+                                cameraService.pauseCamera()
+                                cameraState = cameraService.getCameraState()
+                            }
+                        },
+                        enabled = !isProcessing,
+                        colors =
+                                ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.tertiary
+                                )
+                ) {
+                    Text("⏸️")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Close Camera")
+                }
             }
 
-            Button(
-                onClick = { 
-                    photoData = null
-                    imageBitmap = null
-                },
-                colors =
-                    ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    )
-            ) {
-                Text("🗑️")
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Clear", color = Color.Black)
+            // Clear Photo button (alternative action when photo exists)
+            if (photoData != null && cameraState == CameraState.READY) {
+                Button(
+                        onClick = {
+                            photoData = null
+                            imageBitmap = null
+                        },
+                        colors =
+                                ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.secondary
+                                )
+                ) {
+                    Text("🗑️")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Clear")
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-//        Text(
-//            text =
-//                "Camera Permission: ${if (cameraService.hasCameraPermission()) "Granted" else "Not Granted"}",
-//            style = MaterialTheme.typography.bodySmall,
-//            color =
-//                if (cameraService.hasCameraPermission()) MaterialTheme.colorScheme.primary
-//                else MaterialTheme.colorScheme.error
-//        )
+        //        Text(
+        //            text =
+        //                "Camera Permission: ${if (cameraService.hasCameraPermission()) "Granted"
+        // else "Not Granted"}",
+        //            style = MaterialTheme.typography.bodySmall,
+        //            color =
+        //                if (cameraService.hasCameraPermission()) MaterialTheme.colorScheme.primary
+        //                else MaterialTheme.colorScheme.error
+        //        )
     }
 }
-
