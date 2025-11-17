@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.expensetracker.model.ExpenseCategory
+import com.example.expensetracker.domain.analytics.CategoryTotal
 import com.example.theme.com.example.expensetracker.LocalAppColors
 import network.chaintech.cmpcharts.common.model.PlotType
 import network.chaintech.cmpcharts.ui.piechart.charts.PieChart
@@ -61,9 +61,9 @@ fun categoryColor(name: String, index: Int): Color {
 
 @Composable
 fun ExpenseBreakdownCard(
-    categorySum: Map<ExpenseCategory, Double>
+    categoryTotals: List<CategoryTotal>
 ) {
-    val total = categorySum.values.sum()
+    val total = categoryTotals.sumOf { it.total }
     val appColors = LocalAppColors.current
 
     Column(Modifier.padding(horizontal = 16.dp)) {
@@ -84,7 +84,7 @@ fun ExpenseBreakdownCard(
                 if (total == 0.0) {
                     Text("No data available", color = appColors.mutedForeground)
                 } else {
-                    DonutPieChart(categorySum = categorySum)
+                    DonutPieChart(categoryTotals)
                 }
             }
         }
@@ -107,28 +107,28 @@ fun ExpenseBreakdownCard(
                 if (total == 0.0) {
                     Text("No expenses yet.", color = appColors.mutedForeground)
                 } else {
-                    BreakdownList(categorySum)
+                    BreakdownList(categoryTotals)
                 }
             }
         }
     }
 }
 
-/* ─────────────── PIE CHART WITH CLICK ─────────────── */
+/* ─────────────── PIE CHART USING CategoryTotal ─────────────── */
 
 @Composable
 fun DonutPieChart(
-    categorySum: Map<ExpenseCategory, Double>
+    categoryTotals: List<CategoryTotal>
 ) {
     val appColors = LocalAppColors.current
-    val total = categorySum.values.sumOf { it }
+    val total = categoryTotals.sumOf { it.total }
 
-    val slices = categorySum.entries.mapIndexed { index, (category, amount) ->
-        val percent = if (total == 0.0) 0f else ((amount / total) * 100f).toFloat()
+    val slices = categoryTotals.mapIndexed { index, item ->
+        val percent = if (total == 0.0) 0f else ((item.total / total) * 100f).toFloat()
         PieChartData.Slice(
-            label = category.displayName,
+            label = item.category,
             value = percent,
-            color = categoryColor(category.displayName, index)
+            color = categoryColor(item.category, index)
         )
     }
 
@@ -171,13 +171,12 @@ fun DonutPieChart(
         )
     }
 
-    // Selected slice info (same logic)
+    // Selected slice info
     activeSlice?.let { slice ->
-        val category = slice.label
         val percent = slice.value.toInt()
-        val amount = categorySum.entries
-            .firstOrNull { it.key.displayName == category }
-            ?.value ?: 0.0
+        val amount = categoryTotals
+            .firstOrNull { it.category == slice.label }
+            ?.total ?: 0.0
 
         Spacer(Modifier.height(8.dp))
 
@@ -191,7 +190,7 @@ fun DonutPieChart(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "$category — $${amount.format(2)} ($percent%)",
+                text = "${slice.label} — $${amount.format(2)} ($percent%)",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = appColors.foreground
@@ -200,19 +199,20 @@ fun DonutPieChart(
     }
 }
 
-/* ─────────────── BREAKDOWN LIST ─────────────── */
+/* ─────────────── BREAKDOWN LIST USING CategoryTotal ─────────────── */
 
 @Composable
 fun BreakdownList(
-    categorySum: Map<ExpenseCategory, Double>
+    categoryTotals: List<CategoryTotal>
 ) {
-    val total = categorySum.values.sum()
-    categorySum.entries.forEachIndexed { idx, (cat, amount) ->
+    val total = categoryTotals.sumOf { it.total }
+
+    categoryTotals.forEachIndexed { index, item ->
         BreakdownRow(
-            name = cat.displayName,
-            percent = amount / total * 100,
-            amount = amount,
-            color = categoryColor(cat.displayName, idx)
+            name = item.category,
+            percent = if (total == 0.0) 0.0 else (item.total / total * 100),
+            amount = item.total,
+            color = categoryColor(item.category, index)
         )
         Spacer(Modifier.height(8.dp))
     }
