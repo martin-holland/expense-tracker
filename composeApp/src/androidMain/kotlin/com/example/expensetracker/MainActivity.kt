@@ -28,6 +28,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
+        // Initialize database context FIRST before accessing database
+        AndroidDatabaseContext.init(this)
+        
+        appContext = this
+
         // Initialize database early to ensure migrations run
         // This triggers database creation and applies migrations if needed
         android.util.Log.d("MainActivity", "Initializing database...")
@@ -49,15 +54,10 @@ class MainActivity : ComponentActivity() {
             android.util.Log.e("MainActivity", "Error scheduling exchange rate refresh", e)
         }
 
-        appContext = this
-
         requestNecessaryPermissions()
 
         initializeNapier()
         Napier.d("App initialized", tag = "DDD")
-
-        // Initialize database context for Android
-        AndroidDatabaseContext.init(this)
 
         // Camera will be initialized only when CameraScreen is displayed, not at app startup
         // This prevents unnecessary battery usage and privacy concerns
