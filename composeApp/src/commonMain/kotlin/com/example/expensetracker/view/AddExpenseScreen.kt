@@ -79,7 +79,7 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
             modifier =
                     Modifier.verticalScroll(rememberScrollState())
                             .fillMaxSize()
-                            .background(AppColors.background)
+                            .background(appColors.background)
                             .padding(20.dp)
     ) {
         // === Header ===
