@@ -1,3 +1,4 @@
+
 package com.example.theme.com.example.expensetracker
 
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -13,6 +14,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.expensetracker.model.ThemeOption
 import com.example.expensetracker.viewmodel.SettingsViewModel
 
+
 @Composable
 fun ThemeProvider(
     settingsViewModel: SettingsViewModel = viewModel(),
@@ -21,51 +23,46 @@ fun ThemeProvider(
     val selectedThemeOption by settingsViewModel.selectedThemeOption.collectAsState()
     val systemDark = isSystemInDarkTheme()
 
+
     val useDarkTheme = when (selectedThemeOption) {
         ThemeOption.LIGHT -> false
         ThemeOption.DARK -> true
         ThemeOption.SYSTEM -> systemDark
     }
 
-    val appColorScheme =
-        if (useDarkTheme) DarkAppColorScheme
-        else LightAppColorScheme
+    val appColorScheme = if (useDarkTheme) {
+        DarkAppColorScheme
+    } else {
+        LightAppColorScheme
+    }
 
-    val materialColors =
-        if (useDarkTheme)
-            darkColorScheme(
-                background = DarkAppColors.background,
-                surface = DarkAppColors.card,
-                primary = DarkAppColors.primary,
-                onPrimary = DarkAppColors.primaryForeground,
-                secondary = DarkAppColors.secondary,
-                onSecondary = DarkAppColors.secondaryForeground,
-                error = DarkAppColors.destructive,
-                onError = DarkAppColors.destructiveForeground,
-                onBackground = DarkAppColors.foreground,
-                onSurface = DarkAppColors.cardForeground,
-                outline = DarkAppColors.border,
-                surfaceVariant = DarkAppColors.inputBackground
-            )
-        else
-            lightColorScheme(
-                background = AppColors.background,
-                surface = AppColors.card,
-                primary = AppColors.primary,
-                onPrimary = AppColors.primaryForeground,
-                secondary = AppColors.secondary,
-                onSecondary = AppColors.secondaryForeground,
-                error = AppColors.destructive,
-                onError = AppColors.destructiveForeground,
-                onBackground = AppColors.foreground,
-                onSurface = AppColors.cardForeground,
-                outline = AppColors.border,
-                surfaceVariant = AppColors.inputBackground
-            )
+    val colors = if (useDarkTheme) {
+        darkColorScheme(
+            background = DarkAppColors.background,
+            surface = DarkAppColors.card,
+            primary = DarkAppColors.primary,
+            onPrimary = DarkAppColors.primaryForeground,
+            secondary = DarkAppColors.secondary,
+            onSecondary = DarkAppColors.secondaryForeground,
+            error = DarkAppColors.destructive,
+            onError = DarkAppColors.destructiveForeground
+        )
+    } else {
+        lightColorScheme(
+            background = AppColors.background,
+            surface = AppColors.card,
+            primary = AppColors.primary,
+            onPrimary = AppColors.primaryForeground,
+            secondary = AppColors.secondary,
+            onSecondary = AppColors.secondaryForeground,
+            error = AppColors.destructive,
+            onError = AppColors.destructiveForeground
+        )
+    }
 
     CompositionLocalProvider(LocalAppColors provides appColorScheme) {
         MaterialTheme(
-            colorScheme = materialColors,
+            colorScheme = colors,
             typography = Typography(
                 displayLarge = AppTypography.displayLarge,
                 titleLarge = AppTypography.titleLarge,
