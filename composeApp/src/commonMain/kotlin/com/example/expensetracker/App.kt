@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.example.expensetracker.view.AddExpenseScreen
-import com.example.expensetracker.view.DashboardScreen
+import com.example.expensetracker.view.dashboard.DashboardScreen
 import com.example.expensetracker.view.ExpenseHistoryScreen
 import com.example.expensetracker.view.SettingsScreen
 
