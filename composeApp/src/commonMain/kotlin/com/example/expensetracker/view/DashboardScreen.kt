@@ -40,6 +40,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -90,18 +91,32 @@ fun DashboardScreen(viewModel: DashBoardViewModel = viewModel { DashBoardViewMod
 
     val appColors = LocalAppColors.current
     val uiState = viewModel.uiState
+    
+    // Get converted expenses and base currency for accurate totals
+    val convertedExpenses by viewModel.convertedExpenses.collectAsState()
+    val baseCurrency by viewModel.baseCurrency.collectAsState()
 
-    val totalSpent = uiState.expenses.sumOf { it.amount }
-    val chosenCurrenty = Currency.USD
-    val currentMonth = "October 2025"
+    // Calculate total spent using converted amounts (in base currency)
+    val totalSpent = convertedExpenses.fold(0.0) { acc, expense -> 
+        acc + (expense.convertedAmount ?: expense.expense.amount) 
+    }
+    
+    // Get current month name dynamically
+    val currentMonth = getCurrentMonthAndYear()
 
+    // Calculate category sums using converted amounts (in base currency)
     val categorySumMap =
-        uiState.expenses
-            .groupBy { it.category }
-            .mapValues { entry -> entry.value.sumOf { it.amount } }
+        convertedExpenses
+            .groupBy { it.expense.category }
+            .mapValues { entry -> 
+                entry.value.fold(0.0) { acc, expense -> 
+                    acc + (expense.convertedAmount ?: expense.expense.amount) 
+                } 
+            }
             .toSortedMap(compareBy<ExpenseCategory> { it.displayName })
 
-    println(categorySumMap)
+    println("Dashboard - Total Spent: $totalSpent ${baseCurrency.code}")
+    println("Dashboard - Category Breakdown: $categorySumMap")
 
     Box(
         modifier =
@@ -111,14 +126,14 @@ fun DashboardScreen(viewModel: DashBoardViewModel = viewModel { DashBoardViewMod
     ) {
         Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             Header()
-            MonthlySpendCard(totalSpent, currentMonth, chosenCurrenty)
+            MonthlySpendCard(totalSpent, currentMonth, baseCurrency)
 
-            ExpenseBreakdownCard(categorySumMap)
+            ExpenseBreakdownCard(categorySumMap, baseCurrency)
             //            Text("This is overview")
             //            Text("This is pie chart")
             //            Text("This is graph chart")
             //            BarChartExample()
-            WeekBarCard(uiState.expenses)
+            WeekBarCard(convertedExpenses.map { it.expense }, baseCurrency)
         }
     }
 }
@@ -203,7 +218,8 @@ private fun retrieveCurrencySymbol(currency: Currency): String {
 }
 
 @Composable
-fun ExpenseBreakdownCard(categorySumMap: Map<ExpenseCategory, Double>) {
+fun ExpenseBreakdownCard(categorySumMap: Map<ExpenseCategory, Double>, currency: Currency) {
+    val appColors = LocalAppColors.current
     Card(
         //        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -217,8 +233,36 @@ fun ExpenseBreakdownCard(categorySumMap: Map<ExpenseCategory, Double>) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Expense Breakdown", fontWeight = FontWeight.Bold)
-            CategoryPieChart(categorySumMap)
-            CategoryGrid(categorySumMap)
+            
+            if (categorySumMap.isEmpty()) {
+                // Empty state
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(350.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "No expenses yet",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = appColors.mutedForeground
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Add some expenses to see the breakdown",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = appColors.mutedForeground
+                        )
+                    }
+                }
+            } else {
+                CategoryPieChart(categorySumMap)
+                CategoryGrid(categorySumMap, currency)
+            }
         }
     }
 }
@@ -268,7 +312,7 @@ fun CategoryPieChart(categorySumMap: Map<ExpenseCategory, Double>) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun CategoryGrid(categorySumMap: Map<ExpenseCategory, Double>) {
+fun CategoryGrid(categorySumMap: Map<ExpenseCategory, Double>, currency: Currency) {
     val categories = categorySumMap.keys.toList()
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
@@ -280,6 +324,7 @@ fun CategoryGrid(categorySumMap: Map<ExpenseCategory, Double>) {
             CategorySummaryCard(
                 category = category,
                 amount = categorySumMap[category] ?: 0.0,
+                currency = currency,
                 modifier = Modifier.fillMaxWidth().height(80.dp)
             )
         }
@@ -287,7 +332,7 @@ fun CategoryGrid(categorySumMap: Map<ExpenseCategory, Double>) {
 }
 
 @Composable
-fun CategorySummaryCard(category: ExpenseCategory, amount: Double, modifier: Modifier = Modifier) {
+fun CategorySummaryCard(category: ExpenseCategory, amount: Double, currency: Currency, modifier: Modifier = Modifier) {
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = category.backgroundColor),
@@ -309,7 +354,7 @@ fun CategorySummaryCard(category: ExpenseCategory, amount: Double, modifier: Mod
             Column {
                 Text(category.displayName, style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    "$${amount.toInt()}",
+                    "${currency.symbol}${amount.toInt()}",
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.bodyLarge
                 )
@@ -468,8 +513,9 @@ private fun convertToDateOfWeek(day: LocalDateTime): String {
 }
 
 @Composable
-fun WeekBarCard(expenses: List<Expense>, _modifier: Modifier = Modifier) {
-
+fun WeekBarCard(expenses: List<Expense>, currency: Currency, _modifier: Modifier = Modifier) {
+    val appColors = LocalAppColors.current
+    
     Card(
         //        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -484,7 +530,48 @@ fun WeekBarCard(expenses: List<Expense>, _modifier: Modifier = Modifier) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("This Week", fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
-            BarChartExample(expenses)
+            
+            if (expenses.isEmpty()) {
+                // Empty state
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(350.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "No expenses this week",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = appColors.mutedForeground
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Add expenses to see weekly trends",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = appColors.mutedForeground
+                        )
+                    }
+                }
+            } else {
+                BarChartExample(expenses)
+            }
         }
     }
+}
+
+/**
+ * Gets the current month and year as a formatted string
+ */
+@OptIn(kotlin.time.ExperimentalTime::class)
+private fun getCurrentMonthAndYear(): String {
+    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    val monthNames = listOf(
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    )
+    return "${monthNames[now.monthNumber - 1]} ${now.year}"
 }

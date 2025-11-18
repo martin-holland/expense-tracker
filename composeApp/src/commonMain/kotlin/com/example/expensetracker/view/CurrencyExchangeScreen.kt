@@ -193,7 +193,7 @@ fun CurrencyExchangeScreen(
                                             color = appColors.foreground
                                         )
                                         Text(
-                                            text = String.format("%.4f", rate),
+                                            text = formatRate(rate),
                                             style = MaterialTheme.typography.bodyMedium,
                                             fontWeight = FontWeight.Medium,
                                             color = appColors.foreground
@@ -403,5 +403,13 @@ fun CurrencyExchangeScreen(
             }
         }
     }
+}
+
+/**
+ * Formats a rate to 4 decimal places
+ */
+private fun formatRate(rate: Double): String {
+    val roundedRate = kotlin.math.round(rate * 10000) / 10000
+    return roundedRate.toString()
 }
 
