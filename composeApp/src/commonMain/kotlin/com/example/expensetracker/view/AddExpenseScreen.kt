@@ -37,6 +37,7 @@ import com.example.expensetracker.model.Currency
 import com.example.expensetracker.model.ExpenseCategory
 import com.example.expensetracker.service.getMicrophoneService
 import com.example.expensetracker.view.components.camera.CameraScreen
+import com.example.expensetracker.view.components.SnackbarHost
 import com.example.expensetracker.viewmodel.AddExpenseViewModel
 import com.example.expensetracker.viewmodel.VoiceInputViewModel
 import com.example.theme.com.example.expensetracker.AppColors
@@ -60,29 +61,20 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
         val note = viewModel.note
         val date = viewModel.date
         val showVoiceSection by voiceViewModel.showVoiceSection.collectAsState()
-        val errorMessage = viewModel.errorMessage
         val isSaving = viewModel.isSaving
-        val saveSuccess = viewModel.saveSuccess
+        val snackbarMessage = viewModel.snackbarMessage
 
         var showDialog by remember { mutableStateOf(false) }
         var showCamera by remember { mutableStateOf(false) }
         val datePickerState = rememberDatePickerState()
 
-        // Show success message and reset after a delay
-        LaunchedEffect(saveSuccess) {
-                if (saveSuccess) {
-                        kotlinx.coroutines.delay(2000)
-                        viewModel.resetSuccessState()
-                }
-        }
-
-        Column(
-                modifier =
-                        Modifier.verticalScroll(rememberScrollState())
-                                .fillMaxSize()
-                                .background(appColors.background)
-                                .padding(20.dp)
-        ) {
+        Box(modifier = Modifier.fillMaxSize().background(appColors.background)) {
+                Column(
+                        modifier =
+                                Modifier.verticalScroll(rememberScrollState())
+                                        .fillMaxSize()
+                                        .padding(20.dp)
+                ) {
                 // === Header ===
                 Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -497,41 +489,14 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
                                 )
                         }
                 }
-
-                // Success message
-                if (saveSuccess) {
-                        Spacer(Modifier.height(10.dp))
-                        Card(
-                                colors =
-                                        CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
-                                modifier = Modifier.fillMaxWidth()
-                        ) {
-                                Text(
-                                        "✓ Expense saved successfully!",
-                                        color = Color(0xFF2E7D32),
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        modifier = Modifier.padding(12.dp)
-                                )
-                        }
                 }
-
-                // Error message
-                errorMessage?.let {
-                        Spacer(Modifier.height(10.dp))
-                        Card(
-                                colors =
-                                        CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
-                                modifier = Modifier.fillMaxWidth()
-                        ) {
-                                Text(
-                                        it,
-                                        color = Color(0xFFC62828),
-                                        fontSize = 14.sp,
-                                        modifier = Modifier.padding(12.dp)
-                                )
-                        }
-                }
+                
+                // Snackbar at the top - placed last so it appears above scrollable content
+                SnackbarHost(
+                        message = snackbarMessage,
+                        onDismiss = { viewModel.dismissSnackbar() },
+                        modifier = Modifier.align(Alignment.TopCenter)
+                )
         }
 }
 
