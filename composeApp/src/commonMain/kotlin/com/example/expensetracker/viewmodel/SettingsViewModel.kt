@@ -102,6 +102,24 @@ class SettingsViewModel(
                 // Optional field - ignore errors.
             }
             .launchIn(viewModelScope)
+        
+        settingsRepository.getThemeOption()
+            .onEach { themeOption ->
+                _selectedThemeOption.value = themeOption
+            }
+            .catch { e ->
+                _errorMessage.value = "Error loading theme option: ${e.message}"
+            }
+            .launchIn(viewModelScope)
+        
+        settingsRepository.getVoiceInputEnabled()
+            .onEach { isEnabled ->
+                _isVoiceInputEnabled.value = isEnabled
+            }
+            .catch { e ->
+                _errorMessage.value = "Error loading voice input setting: ${e.message}"
+            }
+            .launchIn(viewModelScope)
     }
 
     fun loadSettings() {
@@ -115,6 +133,8 @@ class SettingsViewModel(
                 _apiBaseUrl.value = settings.exchangeRateApiBaseUrl
                 _isApiConfigured.value = settings.isApiConfigured()
                 _lastExchangeRateUpdate.value = settings.lastExchangeRateUpdate?.let { formatTimestamp(it) }
+                _selectedThemeOption.value = settings.themeOption
+                _isVoiceInputEnabled.value = settings.isVoiceInputEnabled
             } catch (e: Exception) {
                 _errorMessage.value = "Error loading settings: ${e.message}"
             } finally {
@@ -235,11 +255,31 @@ class SettingsViewModel(
             getMicrophoneService().requestMicrophonePermission()
             return
         }
+        val previous = _isVoiceInputEnabled.value
         _isVoiceInputEnabled.value = enabled
+        viewModelScope.launch {
+            try {
+                settingsRepository.setVoiceInputEnabled(enabled)
+                println("🔊 Voice input setting saved to database: $enabled")
+            } catch (e: Exception) {
+                _isVoiceInputEnabled.value = previous
+                _errorMessage.value = "Error saving voice input setting: ${e.message}"
+            }
+        }
     }
 
     fun setThemeOption(option: ThemeOption) {
+        val previous = _selectedThemeOption.value
         _selectedThemeOption.value = option
+        viewModelScope.launch {
+            try {
+                settingsRepository.setThemeOption(option)
+                println("🎨 Theme option saved to database: $option")
+            } catch (e: Exception) {
+                _selectedThemeOption.value = previous
+                _errorMessage.value = "Error saving theme option: ${e.message}"
+            }
+        }
     }
 
     fun setCurrency(currency: Currency) {

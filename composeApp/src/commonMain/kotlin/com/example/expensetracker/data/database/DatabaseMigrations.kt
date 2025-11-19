@@ -105,3 +105,47 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
     }
 }
 
+/**
+ * Migration from version 3 to version 4
+ * Adds theme and voice input settings columns to the settings table
+ * 
+ * Changes:
+ * - Added 'themeOption' column (default: "SYSTEM")
+ * - Added 'isVoiceInputEnabled' column (default: 0/false)
+ * 
+ * This migration preserves all existing settings data.
+ */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(database: SQLiteConnection) {
+        // Add themeOption column with default value "SYSTEM"
+        val addThemeColumnSQL = """
+            ALTER TABLE settings 
+            ADD COLUMN themeOption TEXT NOT NULL DEFAULT 'SYSTEM'
+        """.trimIndent()
+        
+        val addThemeStatement = database.prepare(addThemeColumnSQL)
+        try {
+            addThemeStatement.step()
+        } finally {
+            addThemeStatement.close()
+        }
+        
+        // Add isVoiceInputEnabled column with default value 0 (false)
+        val addVoiceColumnSQL = """
+            ALTER TABLE settings 
+            ADD COLUMN isVoiceInputEnabled INTEGER NOT NULL DEFAULT 0
+        """.trimIndent()
+        
+        val addVoiceStatement = database.prepare(addVoiceColumnSQL)
+        try {
+            addVoiceStatement.step()
+        } finally {
+            addVoiceStatement.close()
+        }
+        
+        println("✅ Database migration 3→4 completed successfully")
+        println("   - Added themeOption column (default: SYSTEM)")
+        println("   - Added isVoiceInputEnabled column (default: false)")
+    }
+}
+
