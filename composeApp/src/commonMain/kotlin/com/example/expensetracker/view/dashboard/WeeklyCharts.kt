@@ -11,6 +11,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.expensetracker.model.Expense
+import com.example.theme.com.example.expensetracker.LocalAppColors
 import kotlin.time.Clock
 import kotlinx.datetime.*
 import kotlinx.datetime.DatePeriod
@@ -112,10 +113,12 @@ fun BarChartExample(
         }
         .build()
 
+    val appColors = LocalAppColors.current
+
     val barColor = if (isLastWeek) {
-        Color(0xFF009688)
+        appColors.chart1     // historical week
     } else {
-        Color(0xFF009688)
+        appColors.chart2     // current week
     }
 
     val barData = data.map { it.copy(color = barColor) }

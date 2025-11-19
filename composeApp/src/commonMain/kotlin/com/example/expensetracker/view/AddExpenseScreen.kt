@@ -115,16 +115,14 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
                     }
                 }
                 
-                // Add a clickable "Cancel" text with a TODO() placeholder
                 Text(
                     text = "Cancel",
                     color = appColors.foreground,
                     fontWeight = FontWeight.Medium,
-                    modifier =
-                        Modifier.clickable {
-                            // TODO: Implement navigation back or clear fields
-                        }
-                )
+                    modifier = Modifier.clickable {
+// Reset form state
+                        viewModel.resetForm()
+                    })
             }
 
             Spacer(Modifier.height(24.dp))

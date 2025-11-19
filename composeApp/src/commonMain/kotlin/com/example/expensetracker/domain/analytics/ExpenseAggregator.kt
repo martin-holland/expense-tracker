@@ -69,7 +69,7 @@ object ExpenseAggregator {
         val daily = groupByDay(transactions)
 
         return daily
-            .groupBy { it.date.dayOfMonth / 7 + 1 }   // week-of-month
+            .groupBy { it.date.dayOfMonth - 1/ 7 + 1 }   // week-of-month
             .map { (week, days) ->
                 WeeklyAggregate(
                     weekOfMonth = week,
@@ -119,8 +119,8 @@ object ExpenseAggregator {
     fun calculateMonthOverMonthChange(
         current: MonthlyAggregate,
         previous: MonthlyAggregate?
-    ): Double {
-        if (previous == null || previous.totalExpenses == 0.0) return 100.0
+    ): Double? {
+        if (previous == null || previous.totalExpenses == 0.0) return null
 
         return ((current.totalExpenses - previous.totalExpenses) /
                 previous.totalExpenses) * 100.0

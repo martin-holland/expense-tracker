@@ -18,6 +18,10 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.*
 import kotlin.time.ExperimentalTime
 import kotlin.time.Clock
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.minus
+
 
 
 /*────────────────────────────────────────────────────*/
@@ -28,6 +32,7 @@ data class DashboardUiState(
     val expenses: List<Expense> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null,
+
 
     // Aggregated data
     val currentMonth: YearMonth? = null,
@@ -127,11 +132,9 @@ class DashBoardViewModel : ViewModel() {
     /*           UTIL: YearMonth minusMonths()            */
 
     private fun YearMonth.minusMonths(months: Int): YearMonth {
-        val monthNumber = this.month.ordinal + 1
-        val totalMonths = this.year * 12 + (monthNumber - 1) - months
-        val newYear = totalMonths / 12
-        val newMonth = (totalMonths % 12) + 1
-        return YearMonth(newYear, Month(newMonth))
+        val firstDay = LocalDate(this.year, this.month.number, 1)
+        val adjusted = firstDay.minus(months, DateTimeUnit.MONTH)
+        return YearMonth(adjusted.year, adjusted.month)
     }
 }
 
