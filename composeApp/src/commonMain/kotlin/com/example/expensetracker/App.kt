@@ -44,7 +44,6 @@ fun AppContent() {
     val appColors = LocalAppColors.current
     // Navigation state - controls which screen is shown
     var currentScreen by remember { mutableStateOf(AppScreen.DASHBOARD) }
-    var detectedText by remember { mutableStateOf<String?>("") }
 
     Scaffold(
             containerColor = appColors.background,
@@ -62,10 +61,7 @@ fun AppContent() {
                 AppScreen.HISTORY -> ExpenseHistoryScreen()
                 AppScreen.SETTINGS ->SettingsScreen()
                 AppScreen.PREVIEW -> PreviewScreen(
-                    modifier = Modifier.fillMaxSize(),
-                    onTextGenerated = {
-                        detectedText=it
-                    }
+
                 )
             }
         }

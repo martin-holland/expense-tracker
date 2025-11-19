@@ -2,23 +2,43 @@ package com.example.expensetracker.view
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Color
 import android.view.ViewGroup
+import android.widget.LinearLayout
+import androidx.camera.core.AspectRatio
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.CameraController
+import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
+import com.example.expensetracker.services.TextRecognitionAnalyzer
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
@@ -28,119 +48,82 @@ import java.util.concurrent.Executors
 
 
 @Composable
-actual fun PreviewScreen(
-    modifier: Modifier,
-    onTextGenerated: (String?) -> Unit
-) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val cameraProviderFuture by produceState<ListenableFuture<ProcessCameraProvider>?>(initialValue = null) {
-        value = ProcessCameraProvider.getInstance(context)
+actual fun PreviewScreen() {
+    CameraContent()
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CameraContent() {
+
+    val context: Context = LocalContext.current
+    val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
+    val cameraController: LifecycleCameraController = remember { LifecycleCameraController(context) }
+    var detectedText: String by remember { mutableStateOf("No text detected yet..") }
+
+    fun onTextUpdated(updatedText: String) {
+        detectedText = updatedText
     }
 
-    AndroidView(
-        modifier = modifier,
-        factory = { AndroidViewContext ->
-            PreviewView(AndroidViewContext).apply {
-                this.scaleType = PreviewView.ScaleType.FILL_CENTER
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                )
-                implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-            }
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = { TopAppBar(title = { Text("Text Scanner") }) },
+    ) { paddingValues: PaddingValues ->
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = androidx.compose.ui.Alignment.BottomCenter
+        ) {
+
+            AndroidView(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                factory = { context ->
+                    PreviewView(context).apply {
+                        layoutParams = LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT
+                        )
+                        setBackgroundColor(Color.BLACK)
+                        implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                        scaleType = PreviewView.ScaleType.FILL_START
+                    }.also { previewView ->
+                        startTextRecognition(
+                            context = context,
+                            cameraController = cameraController,
+                            lifecycleOwner = lifecycleOwner,
+                            previewView = previewView,
+                            onDetectedTextUpdated = ::onTextUpdated
+                        )
+                    }
+                }
+            )
+
+            Text(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(androidx.compose.ui.graphics.Color.White)
+                    .padding(16.dp),
+                text = detectedText,
+            )
         }
-    ) { previewView ->
-        setUpCamera(
-            previewView = previewView,
-            lifecycleOwner = lifecycleOwner,
-            cameraProviderFuture = cameraProviderFuture,
-            context = context,
-            onTextGenerated = { onTextGenerated(it) }
-        )
     }
 }
 
-private fun setUpCamera(
-    previewView: PreviewView,
-    lifecycleOwner: LifecycleOwner,
-    cameraProviderFuture: ListenableFuture<ProcessCameraProvider>?,
+private fun startTextRecognition(
     context: Context,
-    onTextGenerated: (String?) -> Unit
+    cameraController: LifecycleCameraController,
+    lifecycleOwner: LifecycleOwner,
+    previewView: PreviewView,
+    onDetectedTextUpdated: (String) -> Unit
 ) {
-    val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
-    cameraProviderFuture?.let { cameraProviderFuture ->
-        cameraProviderFuture.addListener({
-            val preview = Preview.Builder().build().also {
-                it.setSurfaceProvider(previewView.surfaceProvider)
-            }
-            // Used to bind the lifecycle of cameras to the lifecycle owner
-            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
-            val imageCapture = ImageCapture.Builder().build()
 
-            try {
-                // Unbind use cases before rebinding
-                cameraProvider.unbindAll()
+    cameraController.imageAnalysisTargetSize = CameraController.OutputSize(AspectRatio.RATIO_16_9)
+    cameraController.setImageAnalysisAnalyzer(
+        ContextCompat.getMainExecutor(context),
+        TextRecognitionAnalyzer(onDetectedTextUpdated = onDetectedTextUpdated)
+    )
 
-                //Image Analysis Function
-//                val imageAnalyzer = ImageAnalysis.Builder()
-//                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-//                    .build()
-//                    .also {
-//                        it.setAnalyzer(
-//                            cameraExecutor,
-//                            MLkitImageAnalyzer(
-//                                onTextDetected = { detectedText ->
-//                                    onTextGenerated(detectedText)
-//                                },
-//                            )
-//                        )
-//                    }
-
-                // Bind use cases to camera
-                cameraProvider.bindToLifecycle(
-                    lifecycleOwner,
-                    CameraSelector.DEFAULT_BACK_CAMERA,
-                    preview,
-                    imageCapture,
-//                    imageAnalyzer
-                )
-
-            } catch (exc: Exception) {
-                exc.printStackTrace()
-            }
-
-        }, ContextCompat.getMainExecutor(context))
-    }
+    cameraController.bindToLifecycle(lifecycleOwner)
+    previewView.controller = cameraController
 }
-
-//private class MLkitImageAnalyzer(
-//    private val onTextDetected: ((String?) -> (Unit))?,
-//) :
-//    ImageAnalysis.Analyzer {
-//
-//    private val textRecognizer: TextRecognizer by lazy {
-//        TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-//    }
-//
-//
-//    @SuppressLint("UnsafeOptInUsageError")
-//    override fun analyze(imageProxy: ImageProxy) {
-//        imageProxy.image?.let { mediaImage ->
-//            val image = InputImage.fromMediaImage(
-//                mediaImage,
-//                imageProxy.imageInfo.rotationDegrees
-//            )
-//            InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
-//
-//            /// Pass image to an ML Kit Vision API
-//            textRecognizer.process(
-//                image
-//            ).addOnSuccessListener { visionText -> onTextDetected?.invoke(visionText.text) }
-//
-//
-//            imageProxy.close()
-//        }
-//    }
-//}
-

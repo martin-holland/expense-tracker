@@ -6,7 +6,6 @@ import androidx.compose.ui.Modifier
 @Composable
 actual fun PreviewScreen(
     // placeholder for the ios
-    modifier: Modifier,
-    onTextGenerated: (String?) -> Unit
+
 ) {
 }
