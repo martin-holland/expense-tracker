@@ -14,7 +14,10 @@ import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ElectricBolt
 import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.Mic
@@ -554,148 +557,49 @@ private fun VoiceInputSection(
                 }
             }
 
-            errorMessage?.let { error ->
-                Text(
-                        error,
-                        color = Color.Red,
-                        fontSize = 14.sp,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                )
-            }
-
-            Card(
-                    modifier = Modifier.fillMaxWidth().height(80.dp),
-                    colors = CardDefaults.cardColors(containerColor = appColors.inputBackground),
-                    border = BorderStroke(1.dp, appColors.border)
-            ) {
-                Column(
-                        modifier = Modifier.fillMaxSize().padding(16.dp),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                            text =
-                                    when {
-                                        isRecording -> "🎤 Recording..."
-                                        audioData != null ->
-                                                "✅ Audio recorded (${audioData!!.size} bytes)"
-                                        else -> "Tap record to start voice input"
-                                    },
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = accentGreen,
-                            fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            Button(
-                    onClick = {
-                        if (isRecording) {
-                            voiceViewModel.stopRecording()
-                        } else {
-                            voiceViewModel.startRecording()
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors =
-                            ButtonDefaults.buttonColors(
-                                    containerColor =
-                                            if (isRecording) Color(0xFFFF6B6B) else accentGreen
-                            ),
-                    shape = RoundedCornerShape(10.dp),
-                    enabled = !isProcessing && isVoiceInputEnabled && hasMicrophonePermission
-            ) {
-                if (isProcessing) {
-                    CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                    )
-                } else {
-                    Icon(
-                            if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
-                            contentDescription = null,
-                            tint = Color.White
-                    )
-                }
-                Spacer(Modifier.width(8.dp))
-                Text(
-                        if (isRecording) "Stop Recording" else "Start Recording",
-                        color = Color.White,
-                        fontWeight = FontWeight.Medium
-                )
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                        onClick = {
-                            // Non-functional for now
-                        },
-                        enabled = false, // Disabled since not implemented
-                        modifier = Modifier.weight(1f),
-                        colors =
-                                ButtonDefaults.buttonColors(
-                                        containerColor =
-                                                appColors.mutedForeground.copy(alpha = 0.5f)
-                                ),
-                        shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text("📝")
-                    Spacer(Modifier.width(8.dp))
-                    Text("Transcribe", color = Color.White)
-                }
-
-                Button(
-                        onClick = { voiceViewModel.playAudio() },
-                        enabled = audioData != null && !isRecording && !isProcessing,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = appColors.chart1),
-                        shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text("▶️")
-                    Spacer(Modifier.width(8.dp))
-                    Text("Play", color = Color.White)
-                }
-            }
-
-            // Permission Status
-            Spacer(Modifier.height(8.dp))
-            Text(
-                    text =
-                            "Microphone Permission: ${if (getMicrophoneService().hasMicrophonePermission()) "Granted" else "Not Granted"}",
-                    fontSize = 12.sp,
-                    color =
-                            if (getMicrophoneService().hasMicrophonePermission()) accentGreen
-                            else Color(0xFFFF6B6B)
+            // Speech Recognition Section (Live Transcription)
+            SpeechRecognitionSection(
+                voiceViewModel = voiceViewModel, 
+                accentGreen = accentGreen,
+                hasMicrophonePermission = hasMicrophonePermission
             )
-
-            // NEW: Speech Recognition Section
-            Spacer(Modifier.height(24.dp))
-            SpeechRecognitionSection(voiceViewModel = voiceViewModel, accentGreen = accentGreen)
         }
     }
 }
 
 @Composable
-private fun SpeechRecognitionSection(voiceViewModel: VoiceInputViewModel, accentGreen: Color) {
+private fun SpeechRecognitionSection(
+    voiceViewModel: VoiceInputViewModel, 
+    accentGreen: Color,
+    hasMicrophonePermission: Boolean,
+    addExpenseViewModel: AddExpenseViewModel = viewModel()
+) {
     val speechState by voiceViewModel.speechRecognitionState.collectAsState()
     val partialTranscription by voiceViewModel.partialTranscription.collectAsState()
+    val showManualEntry by voiceViewModel.showManualEntry.collectAsState()
+    val manualEntryText by voiceViewModel.manualEntryText.collectAsState()
     val appColors = LocalAppColors.current
 
     Column {
-        Text(
-                "Live Transcription (POC)",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = appColors.foreground
-        )
+        Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                    "Live Transcription (POC)",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = appColors.foreground
+            )
+            // Microphone Permission Status
+            Text(
+                    text = "🎤 ${if (hasMicrophonePermission) "Granted" else "Not Granted"}",
+                    fontSize = 12.sp,
+                    color = if (hasMicrophonePermission) accentGreen else Color(0xFFFF6B6B),
+                    fontWeight = FontWeight.Medium
+            )
+        }
 
         Spacer(Modifier.height(12.dp))
 
@@ -800,6 +704,19 @@ private fun SpeechRecognitionSection(voiceViewModel: VoiceInputViewModel, accent
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = Color(0xFFEF4444)
                             )
+                            Spacer(Modifier.height(12.dp))
+                            Button(
+                                    onClick = { voiceViewModel.enableManualEntry() },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = appColors.primary
+                                    ),
+                                    shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = null, tint = Color.White)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Enter Text Manually", color = Color.White)
+                            }
                         }
                     }
                 }
@@ -807,6 +724,18 @@ private fun SpeechRecognitionSection(voiceViewModel: VoiceInputViewModel, accent
         }
 
         Spacer(Modifier.height(12.dp))
+
+        // Manual text entry section (fallback)
+        if (showManualEntry) {
+            ManualTextEntryCard(
+                text = manualEntryText,
+                onTextChange = { voiceViewModel.onManualEntryTextChanged(it) },
+                onParse = { voiceViewModel.parseManualEntry() },
+                onCancel = { voiceViewModel.cancelManualEntry() },
+                appColors = appColors
+            )
+            Spacer(Modifier.height(12.dp))
+        }
 
         // Control buttons - Android-specific implementation will be handled in MainActivity
         SpeechRecognitionButton(
@@ -840,7 +769,15 @@ private fun SpeechRecognitionSection(voiceViewModel: VoiceInputViewModel, accent
         // Show parsed results
         parsedData?.let { data ->
             Spacer(Modifier.height(12.dp))
-            ParsedDataCard(data = data, appColors = appColors)
+            ParsedDataCard(
+                data = data, 
+                appColors = appColors,
+                onUseData = { 
+                    addExpenseViewModel.populateFromParsedData(data)
+                    voiceViewModel.clearParsedData()
+                    voiceViewModel.resetSpeechRecognition()
+                }
+            )
         }
     }
 }
@@ -855,7 +792,8 @@ expect fun SpeechRecognitionButton(
 @Composable
 private fun ParsedDataCard(
         data: com.example.expensetracker.service.ParsedExpenseData,
-        appColors: com.example.theme.com.example.expensetracker.AppColorScheme
+        appColors: com.example.theme.com.example.expensetracker.AppColorScheme,
+        onUseData: () -> Unit
 ) {
     Card(
             modifier = Modifier.fillMaxWidth(),
@@ -899,20 +837,39 @@ private fun ParsedDataCard(
             ParsedField("Category", data.category?.displayName ?: "Not found", appColors)
             ParsedField("Description", data.description.ifBlank { "Not found" }, appColors)
 
-            // If usable, show status
-            if (data.isUsable) {
-                Spacer(Modifier.height(12.dp))
-                Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                            "✓ Ready to use",
-                            color = Color(0xFF10B981),
-                            fontWeight = FontWeight.Medium,
-                            style = MaterialTheme.typography.bodySmall
-                    )
-                }
+            // Show "Use This Data" button
+            Spacer(Modifier.height(12.dp))
+            Button(
+                    onClick = onUseData,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = when {
+                            data.completeness >= 0.8f -> Color(0xFF10B981)
+                            data.completeness >= 0.5f -> Color(0xFFF59E0B)
+                            else -> Color(0xFF9CA3AF)
+                        }
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+            ) {
+                Icon(Icons.Default.Check, contentDescription = null, tint = Color.White)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (data.isUsable) "✓ Use This Data" else "Use Partial Data",
+                    color = Color.White,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            
+            // Show hint for partial data
+            if (!data.isUsable) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "⚠️ Some fields are missing. You can fill them in the form.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = appColors.mutedForeground,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
             }
         }
     }
@@ -937,6 +894,98 @@ private fun ParsedField(
                         if (value != "Not found") appColors.foreground
                         else appColors.mutedForeground
         )
+    }
+}
+
+@Composable
+private fun ManualTextEntryCard(
+        text: String,
+        onTextChange: (String) -> Unit,
+        onParse: () -> Unit,
+        onCancel: () -> Unit,
+        appColors: com.example.theme.com.example.expensetracker.AppColorScheme
+) {
+    Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFFF3F4F6).copy(alpha = 0.5f)
+            ),
+            border = BorderStroke(1.dp, appColors.primary.copy(alpha = 0.3f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                        "✍️ Manual Entry",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = appColors.foreground
+                )
+                IconButton(
+                        onClick = onCancel,
+                        modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Cancel",
+                            tint = appColors.mutedForeground,
+                            modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                    "Enter your expense details in natural language",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = appColors.mutedForeground
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            // Text input field
+            OutlinedTextField(
+                    value = text,
+                    onValueChange = onTextChange,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
+                    placeholder = {
+                        Text(
+                                "E.g., \"50 euros for lunch at restaurant\" or \"20 dollars for gas\"",
+                                style = MaterialTheme.typography.bodySmall
+                        )
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = appColors.primary,
+                            unfocusedBorderColor = appColors.border,
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    textStyle = MaterialTheme.typography.bodyMedium
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            // Parse button
+            Button(
+                    onClick = onParse,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = text.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = appColors.primary
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+            ) {
+                Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White)
+                Spacer(Modifier.width(8.dp))
+                Text("Extract Expense Data", color = Color.White, fontWeight = FontWeight.Medium)
+            }
+        }
     }
 }
 

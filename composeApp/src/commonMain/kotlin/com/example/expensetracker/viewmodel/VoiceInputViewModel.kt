@@ -171,4 +171,64 @@ class VoiceInputViewModel : ViewModel() {
     fun clearParsedData() {
         _parsedExpenseData.value = null
     }
+
+    // NEW: Manual text entry state (fallback when transcription fails)
+    private val _manualEntryText = MutableStateFlow("")
+    val manualEntryText: StateFlow<String> = _manualEntryText.asStateFlow()
+
+    private val _showManualEntry = MutableStateFlow(false)
+    val showManualEntry: StateFlow<Boolean> = _showManualEntry.asStateFlow()
+
+    /**
+     * Enable manual text entry mode (fallback for transcription failures)
+     */
+    fun enableManualEntry() {
+        _showManualEntry.value = true
+        _manualEntryText.value = ""
+    }
+
+    /**
+     * Update manual entry text
+     */
+    fun onManualEntryTextChanged(text: String) {
+        _manualEntryText.value = text
+    }
+
+    /**
+     * Parse manually entered text
+     */
+    fun parseManualEntry() {
+        if (_manualEntryText.value.isNotBlank()) {
+            parseTranscription(_manualEntryText.value)
+            _showManualEntry.value = false
+        }
+    }
+
+    /**
+     * Cancel manual entry
+     */
+    fun cancelManualEntry() {
+        _showManualEntry.value = false
+        _manualEntryText.value = ""
+    }
+
+    /**
+     * Update an individual field in the parsed expense data
+     * This allows manual correction of specific fields
+     */
+    fun updateParsedField(
+        amount: Double? = null,
+        currency: com.example.expensetracker.model.Currency? = null,
+        category: com.example.expensetracker.model.ExpenseCategory? = null,
+        description: String? = null
+    ) {
+        val currentData = _parsedExpenseData.value ?: return
+        
+        _parsedExpenseData.value = currentData.copy(
+            amount = amount ?: currentData.amount,
+            currency = currency ?: currentData.currency,
+            category = category ?: currentData.category,
+            description = description ?: currentData.description
+        )
+    }
 }
