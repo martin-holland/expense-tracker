@@ -51,6 +51,7 @@ import com.example.expensetracker.viewmodel.AddExpenseViewModel
 import com.example.expensetracker.viewmodel.VoiceInputViewModel
 import com.example.theme.com.example.expensetracker.LocalAppColors
 import kotlin.time.ExperimentalTime
+import kotlinx.coroutines.launch
 import kotlinx.datetime.*
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalTime::class)
@@ -75,6 +76,10 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
     var showDialog by remember { mutableStateOf(false) }
     var showCamera by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState()
+    
+    // Scroll state for auto-scrolling to voice section
+    val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
 
     // Check microphone permission when screen loads
     LaunchedEffect(Unit) { settingsViewModel.checkMicrophonePermission() }
@@ -379,7 +384,16 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
                             subtext = if (showVoiceSection) "Tap to close" else "Tap to speak",
                             icon = Icons.Default.Mic,
                             accent = accentGreen,
-                            action = { voiceViewModel.toggleVoiceSection() }
+                            action = { 
+                                voiceViewModel.toggleVoiceSection()
+                                // Scroll to voice section when opened
+                                if (!showVoiceSection) {
+                                    coroutineScope.launch {
+                                        kotlinx.coroutines.delay(100) // Small delay for UI to render
+                                        scrollState.animateScrollTo(scrollState.maxValue)
+                                    }
+                                }
+                            }
                     )
                     if (!showCamera) {
                         QuickInputItem(
@@ -403,7 +417,9 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
             Spacer(Modifier.height(20.dp))
             VoiceInputSection(
                     voiceViewModel = voiceViewModel,
-                    settingsViewModel = settingsViewModel
+                    settingsViewModel = settingsViewModel,
+                    scrollState = scrollState,
+                    coroutineScope = coroutineScope
             )
 
             Spacer(Modifier.height(40.dp))
@@ -474,7 +490,9 @@ private fun SectionCard(title: String, content: @Composable ColumnScope.() -> Un
 @Composable
 private fun VoiceInputSection(
         voiceViewModel: VoiceInputViewModel = viewModel(),
-        settingsViewModel: com.example.expensetracker.viewmodel.SettingsViewModel = viewModel()
+        settingsViewModel: com.example.expensetracker.viewmodel.SettingsViewModel = viewModel(),
+        scrollState: ScrollState? = null,
+        coroutineScope: kotlinx.coroutines.CoroutineScope? = null
 ) {
     val isRecording by voiceViewModel.isRecording.collectAsState()
     val audioData by voiceViewModel.audioData.collectAsState()
@@ -488,6 +506,14 @@ private fun VoiceInputSection(
     val accentGreen = appColors.chart2
 
     if (showVoiceSection) {
+        // Auto-scroll to voice section when it opens
+        LaunchedEffect(showVoiceSection) {
+            if (showVoiceSection) {
+                kotlinx.coroutines.delay(200) // Wait for UI to render
+                scrollState?.animateScrollTo(scrollState.maxValue)
+            }
+        }
+        
         SectionCard(title = "Voice Input") {
             // Show enable voice input message if disabled
             if (!isVoiceInputEnabled) {
@@ -580,6 +606,9 @@ private fun SpeechRecognitionSection(
     val manualEntryText by voiceViewModel.manualEntryText.collectAsState()
     val appColors = LocalAppColors.current
 
+    // Initialize helper at section level so it doesn't get disposed when button moves
+    SpeechRecognitionHelperManager(voiceViewModel)
+
     Column {
         Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -587,29 +616,91 @@ private fun SpeechRecognitionSection(
                 verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                    "Live Transcription (POC)",
+                    "Voice Input",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = appColors.foreground
             )
-            // Microphone Permission Status
+            
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                // Show cancel button when there's active content (transcription, parsed data, or manual entry)
+                val hasActiveContent = speechState !is VoiceInputViewModel.SpeechRecognitionState.Idle || showManualEntry
+                if (hasActiveContent) {
+                    TextButton(
+                            onClick = { voiceViewModel.cancelVoiceInput() },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Cancel",
+                                modifier = Modifier.size(14.dp),
+                                tint = Color(0xFFEF4444)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                                "Cancel",
+                                fontSize = 12.sp,
+                                color = Color(0xFFEF4444),
+                                fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                
+                // "Type instead" option - always visible for quick access
+                TextButton(
+                        onClick = { voiceViewModel.enableManualEntry() },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Type instead",
+                            modifier = Modifier.size(14.dp),
+                            tint = appColors.primary
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                            "Type instead",
+                            fontSize = 12.sp,
+                            color = appColors.primary,
+                            fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+        
+        // Show permission status only when NOT granted
+        if (!hasMicrophonePermission) {
             Text(
-                    text = "🎤 ${if (hasMicrophonePermission) "Granted" else "Not Granted"}",
-                    fontSize = 12.sp,
-                    color = if (hasMicrophonePermission) accentGreen else Color(0xFFFF6B6B),
-                    fontWeight = FontWeight.Medium
+                    text = "🎤 Microphone permission not granted",
+                    fontSize = 11.sp,
+                    color = Color(0xFFFF6B6B),
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(bottom = 8.dp)
             )
         }
 
         Spacer(Modifier.height(12.dp))
 
-        // Transcription display
-        Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors =
-                        CardDefaults.cardColors(containerColor = appColors.muted.copy(alpha = 0.2f))
-        ) {
+        // Hide voice transcription when manual entry is active
+        if (!showManualEntry) {
+            // Show button ABOVE card in Idle or Processing state for better visual hierarchy
+            if (speechState is VoiceInputViewModel.SpeechRecognitionState.Idle || 
+                speechState is VoiceInputViewModel.SpeechRecognitionState.Processing) {
+                SpeechRecognitionButton(
+                        voiceViewModel = voiceViewModel,
+                        speechState = speechState,
+                        accentGreen = accentGreen
+                )
+                Spacer(Modifier.height(12.dp))
+            }
+
+            // Transcription display
+            Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors =
+                            CardDefaults.cardColors(containerColor = appColors.muted.copy(alpha = 0.2f))
+            ) {
             Box(modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp).padding(16.dp)) {
                 when (val state = speechState) {
                     is VoiceInputViewModel.SpeechRecognitionState.Idle -> {
@@ -618,6 +709,33 @@ private fun SpeechRecognitionSection(
                                 color = appColors.mutedForeground,
                                 style = MaterialTheme.typography.bodyMedium
                         )
+                    }
+                    is VoiceInputViewModel.SpeechRecognitionState.Processing -> {
+                        Column {
+                            Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp,
+                                        color = appColors.primary
+                                )
+                                Text(
+                                        "Processing...",
+                                        color = appColors.primary,
+                                        fontWeight = FontWeight.Medium
+                                )
+                            }
+                            if (partialTranscription.isNotBlank()) {
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                        partialTranscription,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                )
+                            }
+                        }
                     }
                     is VoiceInputViewModel.SpeechRecognitionState.Listening -> {
                         Column {
@@ -631,7 +749,7 @@ private fun SpeechRecognitionSection(
                                         color = accentGreen
                                 )
                                 Text(
-                                        "Listening...",
+                                        if (partialTranscription.isBlank()) "Listening..." else "Processing...",
                                         color = accentGreen,
                                         fontWeight = FontWeight.Medium
                                 )
@@ -649,81 +767,94 @@ private fun SpeechRecognitionSection(
                     }
                     is VoiceInputViewModel.SpeechRecognitionState.Success -> {
                         Column {
-                            Row(
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                        "✓ Transcribed",
-                                        color = Color(0xFF10B981),
-                                        fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                        "Confidence: ${(state.confidence * 100).toInt()}%",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = appColors.mutedForeground
-                                )
-                            }
+                            Text(
+                                    "✓ Transcribed",
+                                    color = Color(0xFF10B981),
+                                    fontWeight = FontWeight.Medium,
+                                    style = MaterialTheme.typography.bodyMedium
+                            )
                             Spacer(Modifier.height(8.dp))
                             Text(
                                     state.transcription,
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Medium
                             )
-
-                            // Show alternatives if available
-                            if (state.alternatives.size > 1) {
-                                Spacer(Modifier.height(8.dp))
-                                Text(
-                                        "Alternatives:",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = appColors.mutedForeground
-                                )
-                                state.alternatives.drop(1).take(2).forEach { alt ->
-                                    Text(
-                                            "• $alt",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = appColors.mutedForeground,
-                                            fontStyle =
-                                                    androidx.compose.ui.text.font.FontStyle.Italic
-                                    )
-                                }
-                            }
+                            // Subtle confidence score at bottom
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                    "${(state.confidence * 100).toInt()}% confidence",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = appColors.mutedForeground.copy(alpha = 0.7f),
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                            )
                         }
                     }
                     is VoiceInputViewModel.SpeechRecognitionState.Error -> {
                         Column {
                             Text(
-                                    "❌ Error",
+                                    "❌ ${state.message}",
                                     color = Color(0xFFEF4444),
-                                    fontWeight = FontWeight.Medium
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                    state.message,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color(0xFFEF4444)
+                                    fontWeight = FontWeight.Medium,
+                                    style = MaterialTheme.typography.bodyMedium
                             )
                             Spacer(Modifier.height(12.dp))
-                            Button(
-                                    onClick = { voiceViewModel.enableManualEntry() },
+                            // Show both retry and manual entry options
+                            Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = appColors.primary
-                                    ),
-                                    shape = RoundedCornerShape(8.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Icon(Icons.Default.Edit, contentDescription = null, tint = Color.White)
-                                Spacer(Modifier.width(8.dp))
-                                Text("Enter Text Manually", color = Color.White)
+                                OutlinedButton(
+                                        onClick = { 
+                                            voiceViewModel.resetSpeechRecognition()
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(8.dp),
+                                        border = BorderStroke(1.dp, accentGreen)
+                                ) {
+                                    Icon(
+                                            Icons.Default.Mic, 
+                                            contentDescription = null, 
+                                            tint = accentGreen,
+                                            modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Try Again", color = accentGreen)
+                                }
+                                Button(
+                                        onClick = { voiceViewModel.enableManualEntry() },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = appColors.primary
+                                        ),
+                                        shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Icon(
+                                            Icons.Default.Edit, 
+                                            contentDescription = null, 
+                                            tint = Color.White,
+                                            modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Type Instead", color = Color.White)
+                                }
                             }
                         }
                     }
                 }
             }
-        }
+            }
 
-        Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
+
+            // Show button BELOW card only when actively Listening (not Idle, Processing, Success, or Error)
+            if (speechState is VoiceInputViewModel.SpeechRecognitionState.Listening) {
+                SpeechRecognitionButton(
+                        voiceViewModel = voiceViewModel,
+                        speechState = speechState,
+                        accentGreen = accentGreen
+                )
+            }
+        }
 
         // Manual text entry section (fallback)
         if (showManualEntry) {
@@ -737,43 +868,20 @@ private fun SpeechRecognitionSection(
             Spacer(Modifier.height(12.dp))
         }
 
-        // Control buttons - Android-specific implementation will be handled in MainActivity
-        SpeechRecognitionButton(
-                voiceViewModel = voiceViewModel,
-                speechState = speechState,
-                accentGreen = accentGreen
-        )
-
-        // Parse button and results
+        // Show parsed results (auto-parsed after successful transcription)
         val parsedData by voiceViewModel.parsedExpenseData.collectAsState()
-
-        // Show parse button when we have a successful transcription
-        if (speechState is VoiceInputViewModel.SpeechRecognitionState.Success) {
-            Spacer(Modifier.height(12.dp))
-            Button(
-                    onClick = {
-                        val state =
-                                speechState as VoiceInputViewModel.SpeechRecognitionState.Success
-                        voiceViewModel.parseTranscription(state.transcription)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = appColors.primary),
-                    shape = RoundedCornerShape(8.dp)
-            ) {
-                Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White)
-                Spacer(Modifier.width(8.dp))
-                Text("Extract Expense Data", color = Color.White)
-            }
-        }
-
-        // Show parsed results
         parsedData?.let { data ->
             Spacer(Modifier.height(12.dp))
             ParsedDataCard(
-                data = data, 
+                data = data,
+                voiceViewModel = voiceViewModel,
                 appColors = appColors,
-                onUseData = { 
-                    addExpenseViewModel.populateFromParsedData(data)
+                onSaveExpense = { finalData ->
+                    // Populate form with final (possibly edited) data
+                    addExpenseViewModel.populateFromParsedData(finalData)
+                    // Save the expense directly
+                    addExpenseViewModel.saveExpense()
+                    // Clear voice input state
                     voiceViewModel.clearParsedData()
                     voiceViewModel.resetSpeechRecognition()
                 }
@@ -783,18 +891,32 @@ private fun SpeechRecognitionSection(
 }
 
 @Composable
+expect fun SpeechRecognitionHelperManager(voiceViewModel: VoiceInputViewModel)
+
+@Composable
 expect fun SpeechRecognitionButton(
         voiceViewModel: VoiceInputViewModel,
         speechState: VoiceInputViewModel.SpeechRecognitionState,
         accentGreen: Color
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ParsedDataCard(
         data: com.example.expensetracker.service.ParsedExpenseData,
+        voiceViewModel: VoiceInputViewModel,
         appColors: com.example.theme.com.example.expensetracker.AppColorScheme,
-        onUseData: () -> Unit
+        onSaveExpense: (com.example.expensetracker.service.ParsedExpenseData) -> Unit
 ) {
+    // Editable state for each field
+    var editedAmount by remember(data) { mutableStateOf(data.amount?.toString() ?: "") }
+    var editedDescription by remember(data) { mutableStateOf(data.description) }
+    var editedCurrency by remember(data) { mutableStateOf(data.currency) }
+    // Default category to OTHER if not detected
+    var editedCategory by remember(data) { mutableStateOf(data.category ?: ExpenseCategory.OTHER) }
+    
+    // Dropdown expanded state
+    var currencyExpanded by remember { mutableStateOf(false) }
     Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(8.dp),
@@ -831,42 +953,277 @@ private fun ParsedDataCard(
             HorizontalDivider()
             Spacer(Modifier.height(8.dp))
 
-            // Show each field
-            ParsedField("Amount", data.amount?.toString() ?: "Not found", appColors)
-            ParsedField("Currency", data.currency?.code ?: "Not found", appColors)
-            ParsedField("Category", data.category?.displayName ?: "Not found", appColors)
-            ParsedField("Description", data.description.ifBlank { "Not found" }, appColors)
-
-            // Show "Use This Data" button
-            Spacer(Modifier.height(12.dp))
-            Button(
-                    onClick = onUseData,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = when {
-                            data.completeness >= 0.8f -> Color(0xFF10B981)
-                            data.completeness >= 0.5f -> Color(0xFFF59E0B)
-                            else -> Color(0xFF9CA3AF)
-                        }
-                    ),
-                    shape = RoundedCornerShape(8.dp)
+            // Editable fields
+            val missingFields = mutableListOf<String>()
+            
+            // Amount field (editable)
+            Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Check, contentDescription = null, tint = Color.White)
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    if (data.isUsable) "✓ Use This Data" else "Use Partial Data",
-                    color = Color.White,
-                    fontWeight = FontWeight.Medium
+                Text("Amount", style = MaterialTheme.typography.bodyMedium, color = appColors.mutedForeground)
+                OutlinedTextField(
+                        value = editedAmount,
+                        onValueChange = { editedAmount = it },
+                        modifier = Modifier.width(120.dp),
+                        textStyle = MaterialTheme.typography.bodyMedium,
+                        singleLine = true,
+                        placeholder = { Text("50.0", style = MaterialTheme.typography.bodySmall) }
                 )
             }
+            if (data.amount == null) missingFields.add("Amount")
             
-            // Show hint for partial data
-            if (!data.isUsable) {
+            // Currency selector (editable if missing)
+            if (editedCurrency != null) {
+                ParsedField("Currency", editedCurrency!!.code, appColors)
+            } else {
+                Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                    Text("Currency", style = MaterialTheme.typography.bodyMedium, color = appColors.mutedForeground)
+                    Spacer(Modifier.height(4.dp))
+                    
+                    // Currency Dropdown
+                    ExposedDropdownMenuBox(
+                        expanded = currencyExpanded,
+                        onExpandedChange = { currencyExpanded = it }
+                    ) {
+                        OutlinedTextField(
+                            value = if (editedCurrency != null) 
+                                "${editedCurrency!!.symbol} ${editedCurrency!!.displayName} (${editedCurrency!!.code})"
+                            else "Select Currency",
+                            onValueChange = {},
+                            readOnly = true,
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = currencyExpanded)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = appColors.foreground,
+                                unfocusedTextColor = appColors.foreground,
+                                focusedBorderColor = appColors.border,
+                                unfocusedBorderColor = appColors.border
+                            ),
+                            textStyle = MaterialTheme.typography.bodySmall
+                        )
+                        
+                        ExposedDropdownMenu(
+                            expanded = currencyExpanded,
+                            onDismissRequest = { currencyExpanded = false },
+                            modifier = Modifier.heightIn(max = 250.dp)
+                        ) {
+                            Currency.entries.forEach { currency ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = currency.symbol,
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Column {
+                                                Text(
+                                                    text = currency.code,
+                                                    style = MaterialTheme.typography.bodySmall
+                                                )
+                                                Text(
+                                                    text = currency.displayName,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = appColors.mutedForeground
+                                                )
+                                            }
+                                        }
+                                    },
+                                    onClick = {
+                                        editedCurrency = currency
+                                        currencyExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+                missingFields.add("Currency")
+            }
+            
+            // Category selector (always show as editable since we default to OTHER)
+            if (data.category != null) {
+                // Show as read-only if it was successfully detected
+                ParsedField("Category", editedCategory!!.displayName, appColors)
+            } else {
+                // Show selector with OTHER as default
+                Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                    Text("Category", style = MaterialTheme.typography.bodyMedium, color = appColors.mutedForeground)
+                    Spacer(Modifier.height(4.dp))
+                    
+                    // Compact category selector - 2 per row
+                    val categories = listOf(
+                        ExpenseCategory.FOOD to Icons.Default.Fastfood,
+                        ExpenseCategory.TRAVEL to Icons.Default.DirectionsCar,
+                        ExpenseCategory.UTILITIES to Icons.Default.ElectricBolt,
+                        ExpenseCategory.OTHER to Icons.Default.MoreHoriz
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        categories.chunked(2).forEach { rowCategories ->
+                            Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                            ) {
+                                rowCategories.forEach { (cat, icon) ->
+                                    Box(
+                                            modifier =
+                                                    Modifier.weight(1f)
+                                                            .clip(RoundedCornerShape(6.dp))
+                                                            .border(
+                                                                    1.dp,
+                                                                    if (editedCategory == cat) Color(0xFF10B981)
+                                                                    else appColors.border,
+                                                                    RoundedCornerShape(6.dp)
+                                                            )
+                                                            .background(
+                                                                    if (editedCategory == cat)
+                                                                            Color(0xFF10B981).copy(alpha = 0.1f)
+                                                                    else appColors.card
+                                                            )
+                                                            .clickable { editedCategory = cat }
+                                                            .padding(10.dp)
+                                    ) {
+                                        Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.Center,
+                                                modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Icon(
+                                                    icon,
+                                                    contentDescription = cat.displayName,
+                                                    tint = if (editedCategory == cat) Color(0xFF10B981) else appColors.mutedForeground,
+                                                    modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(Modifier.width(4.dp))
+                                            Text(
+                                                    cat.displayName,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Medium,
+                                                    fontSize = 11.sp,
+                                                    color = if (editedCategory == cat) Color(0xFF10B981) else appColors.foreground
+                                            )
+                                        }
+                                    }
+                                }
+                                // Fill remaining space if row has less than 2 items
+                                repeat(2 - rowCategories.size) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                }
+                // Don't add to missing fields since we default to OTHER
+            }
+            
+            // Description field (editable)
+            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                Text("Description", style = MaterialTheme.typography.bodyMedium, color = appColors.mutedForeground)
                 Spacer(Modifier.height(4.dp))
+                OutlinedTextField(
+                        value = editedDescription,
+                        onValueChange = { editedDescription = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = MaterialTheme.typography.bodyMedium,
+                        minLines = 2,
+                        maxLines = 3,
+                        placeholder = { Text("Enter description", style = MaterialTheme.typography.bodySmall) }
+                )
+            }
+            if (data.description.isBlank()) missingFields.add("Description")
+            
+            // Show missing fields summary if any
+            if (missingFields.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
                 Text(
-                    "⚠️ Some fields are missing. You can fill them in the form.",
+                    "Missing: ${missingFields.joinToString(", ")}",
                     style = MaterialTheme.typography.labelSmall,
                     color = appColors.mutedForeground,
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                )
+            }
+
+            // Show "Save Expense" and "Cancel" buttons
+            Spacer(Modifier.height(12.dp))
+            
+            // Validation: all required fields must be filled
+            val isValid = editedAmount.toDoubleOrNull() != null && 
+                         editedDescription.isNotBlank() &&
+                         editedCurrency != null &&
+                         editedCategory != null
+            
+            Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Cancel button
+                OutlinedButton(
+                        onClick = { 
+                            voiceViewModel.cancelVoiceInput()
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, Color(0xFFEF4444)),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFFEF4444)
+                        )
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = null)
+                    Spacer(Modifier.width(4.dp))
+                    Text("Cancel", fontWeight = FontWeight.Medium)
+                }
+                
+                // Save button
+                Button(
+                        onClick = {
+                            // Create updated data with all edited values
+                            val updatedData = data.copy(
+                                amount = editedAmount.toDoubleOrNull() ?: data.amount,
+                                description = editedDescription.ifBlank { data.description },
+                                currency = editedCurrency ?: data.currency,
+                                category = editedCategory ?: data.category
+                            )
+                            onSaveExpense(updatedData)
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = isValid,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF10B981)
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.Check, contentDescription = null, tint = Color.White)
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        "Save",
+                        color = Color.White,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+            
+            // Show hint for required fields
+            if (!isValid) {
+                Spacer(Modifier.height(4.dp))
+                val missing = mutableListOf<String>()
+                if (editedAmount.toDoubleOrNull() == null) missing.add("Amount")
+                if (editedDescription.isBlank()) missing.add("Description")
+                if (editedCurrency == null) missing.add("Currency")
+                if (editedCategory == null) missing.add("Category")
+                
+                Text(
+                    "⚠️ Required: ${missing.joinToString(", ")}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFFEF4444),
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
