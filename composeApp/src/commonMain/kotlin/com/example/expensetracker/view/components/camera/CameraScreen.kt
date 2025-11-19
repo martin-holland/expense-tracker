@@ -368,14 +368,6 @@ fun CameraScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        //        Text(
-        //            text =
-        //                "Camera Permission: ${if (cameraService.hasCameraPermission()) "Granted"
-        // else "Not Granted"}",
-        //            style = MaterialTheme.typography.bodySmall,
-        //            color =
-        //                if (cameraService.hasCameraPermission()) MaterialTheme.colorScheme.primary
-        //                else MaterialTheme.colorScheme.error
-        //        )
+
     }
 }

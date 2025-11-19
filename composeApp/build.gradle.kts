@@ -51,6 +51,11 @@ kotlin {
             implementation("androidx.camera:camera-extensions:${cameraxVersion}")
             implementation(libs.ktor.client.android)
             implementation(libs.androidx.work.runtime)
+            // Face features
+            implementation("com.google.mlkit:face-detection:16.0.0")
+// Text features
+            implementation("com.google.android.gms:play-services-mlkit-text-recognition:16.0.0")
+
         }
         commonMain.dependencies {
             implementation(compose.runtime)
