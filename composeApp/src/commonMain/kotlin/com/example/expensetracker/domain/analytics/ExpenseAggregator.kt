@@ -1,39 +1,47 @@
 package com.example.expensetracker.domain.analytics
 
+import com.example.expensetracker.model.Expense
+import com.example.expensetracker.model.ExpenseCategory
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.YearMonth
 
 object ExpenseAggregator {
 
-    /*     FILTERING UTILITIES     */
+    /* ----------------------------------------------------
+     *  FILTERING UTILITIES
+     * ---------------------------------------------------- */
 
     fun filterByDateRange(
-        transactions: List<Transaction>,
+        expenses: List<Expense>,
         start: LocalDate,
         end: LocalDate
-    ): List<Transaction> =
-        transactions.filter { it.date in start..end }
+    ): List<Expense> =
+        expenses.filter { it.date.date in start..end }
 
     fun search(
-        transactions: List<Transaction>,
+        expenses: List<Expense>,
         query: String
-    ): List<Transaction> =
-        transactions.filter {
-            it.title.contains(query, ignoreCase = true) ||
-                    it.category.contains(query, ignoreCase = true)
+    ): List<Expense> =
+        expenses.filter {
+            it.description.contains(query, ignoreCase = true) ||
+                    it.category.name.contains(query, ignoreCase = true)
         }
 
-    /*   CATEGORY GROUPING LOGIC   */
+    /* ----------------------------------------------------
+     *  CATEGORY GROUPING
+     * ---------------------------------------------------- */
 
     fun groupByCategory(
-        transactions: List<Transaction>
+        expenses: List<Expense>
     ): List<CategoryTotal> {
-        val total = transactions.sumOf { it.amount }
 
-        return transactions
+        val total = expenses.sumOf { it.amount }
+
+        return expenses
             .groupBy { it.category }
             .map { (category, list) ->
                 val sum = list.sumOf { it.amount }
+
                 CategoryTotal(
                     category = category,
                     total = sum,
@@ -45,31 +53,44 @@ object ExpenseAggregator {
     }
 
     fun topCategories(
-        transactions: List<Transaction>,
+        expenses: List<Expense>,
         limit: Int = 3
     ): List<CategoryTotal> =
-        groupByCategory(transactions).take(limit)
+        groupByCategory(expenses).take(limit)
 
-    /*      DAILY AGGREGATION      */
+    /* ----------------------------------------------------
+     *  DAILY AGGREGATION  (REAL CATEGORY TOTALS)
+     * ---------------------------------------------------- */
 
-    fun groupByDay(transactions: List<Transaction>): List<DailyAggregate> =
-        transactions
-            .groupBy { it.date }
+    fun groupByDay(expenses: List<Expense>): List<DailyAggregate> =
+        expenses
+            .groupBy { it.date.date }
             .map { (date, list) ->
+
+                val categoryTotals: Map<ExpenseCategory, Double> =
+                    list.groupBy { it.category }
+                        .mapValues { (_, items) -> items.sumOf { it.amount } }
+
                 DailyAggregate(
                     date = date,
-                    total = list.sumOf { it.amount }
+                    total = list.sumOf { it.amount },
+                    categoryTotals = categoryTotals
                 )
             }
             .sortedBy { it.date }
 
-    /*      WEEKLY AGGREGATION     */
+    /* ----------------------------------------------------
+     *  WEEKLY AGGREGATION
+     * ---------------------------------------------------- */
 
-    fun groupByWeek(transactions: List<Transaction>): List<WeeklyAggregate> {
-        val daily = groupByDay(transactions)
+    fun groupByWeek(expenses: List<Expense>): List<WeeklyAggregate> {
+
+        val daily = groupByDay(expenses)
 
         return daily
-            .groupBy { it.date.dayOfMonth - 1/ 7 + 1 }   // week-of-month
+            .groupBy { day ->
+                (day.date.day - 1) / 7 + 1
+            }
             .map { (week, days) ->
                 WeeklyAggregate(
                     weekOfMonth = week,
@@ -80,21 +101,23 @@ object ExpenseAggregator {
             .sortedBy { it.weekOfMonth }
     }
 
-    /*      MONTHLY AGGREGATION    */
+    /* ----------------------------------------------------
+     *  MONTHLY AGGREGATION
+     * ---------------------------------------------------- */
 
     fun getMonthlyAggregate(
-        transactions: List<Transaction>,
+        expenses: List<Expense>,
         month: YearMonth
     ): MonthlyAggregate {
 
-        val monthTransactions = transactions.filter {
+        val monthExpenses = expenses.filter {
             YearMonth(it.date.year, it.date.month) == month
         }
 
-        val total = monthTransactions.sumOf { it.amount }
-        val daily = groupByDay(monthTransactions)
-        val weekly = groupByWeek(monthTransactions)
-        val categories = groupByCategory(monthTransactions)
+        val total = monthExpenses.sumOf { it.amount }
+        val daily = groupByDay(monthExpenses)
+        val weekly = groupByWeek(monthExpenses)
+        val categories = groupByCategory(monthExpenses)
 
         val averageDaily =
             if (daily.isEmpty()) 0.0 else total / daily.size
@@ -105,7 +128,7 @@ object ExpenseAggregator {
         return MonthlyAggregate(
             month = month,
             totalExpenses = total,
-            transactionCount = monthTransactions.size,
+            transactionCount = monthExpenses.size,
             categories = categories,
             daily = daily,
             weekly = weekly,
@@ -114,13 +137,17 @@ object ExpenseAggregator {
         )
     }
 
-    /*      MONTH-TO-MONTH TREND   */
+    /* ----------------------------------------------------
+     *  MONTH-OVER-MONTH CHANGE
+     * ---------------------------------------------------- */
 
     fun calculateMonthOverMonthChange(
         current: MonthlyAggregate,
         previous: MonthlyAggregate?
-    ): Double? {
-        if (previous == null || previous.totalExpenses == 0.0) return null
+    ): Double?  {
+
+        if (previous == null || previous.totalExpenses == 0.0)
+            return null
 
         return ((current.totalExpenses - previous.totalExpenses) /
                 previous.totalExpenses) * 100.0

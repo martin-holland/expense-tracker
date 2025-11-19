@@ -99,12 +99,12 @@ class DashBoardViewModel : ViewModel() {
         val previousMonth = currentMonth.minusMonths(1)
 
         val currentAgg = ExpenseAggregator.getMonthlyAggregate(
-            transactions = transactions,
+            expenses = expenses,
             month = currentMonth
         )
 
         val prevAgg = ExpenseAggregator.getMonthlyAggregate(
-            transactions = transactions,
+            expenses = expenses,
             month = previousMonth
         )
 

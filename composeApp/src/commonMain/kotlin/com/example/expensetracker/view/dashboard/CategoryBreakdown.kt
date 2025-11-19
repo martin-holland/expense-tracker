@@ -16,48 +16,34 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.expensetracker.domain.analytics.CategoryTotal
+import com.example.expensetracker.model.ExpenseCategory
 import com.example.theme.com.example.expensetracker.LocalAppColors
 import network.chaintech.cmpcharts.common.model.PlotType
 import network.chaintech.cmpcharts.ui.piechart.charts.PieChart
 import network.chaintech.cmpcharts.ui.piechart.models.PieChartConfig
 import network.chaintech.cmpcharts.ui.piechart.models.PieChartData
+import kotlin.math.pow
+import kotlin.math.round
 
-/* ─────────────── COLOR HELPERS ─────────────── */
 
-fun Color.isDark(): Boolean {
-    val r = (red * 255).toInt()
-    val g = (green * 255).toInt()
-    val b = (blue * 255).toInt()
-
-    val brightness = (r * 299 + g * 587 + b * 114) / 1000
-    return brightness < 128
+fun Double.formatAmount(decimals: Int = 2): String {
+    val factor = 10.0.pow(decimals)
+    val rounded = round(this * factor) / factor
+    return rounded.toString()
 }
 
-@Composable
-fun categoryColor(name: String, index: Int): Color {
-    val appColors = LocalAppColors.current
-    val isDark = appColors.background.isDark()
 
-    val darkColors = listOf(
-        appColors.chart1,
-        appColors.chart2,
-        appColors.chart3,
-        appColors.chart4,
-        appColors.chart5
-    )
+fun getCategoryChartColor(category: ExpenseCategory): Color =
+    when (category) {
+        ExpenseCategory.FOOD      -> Color(0xFFFF5A5A)  // red
+        ExpenseCategory.TRAVEL    -> Color(0xFF3A98FF)  // blue
+        ExpenseCategory.UTILITIES -> Color(0xFF3EC6BA)  // teal
+        ExpenseCategory.OTHER     -> Color(0xFFFFBC5B)  // orange
+    }
 
-    val lightColors = listOf(
-        Color(0xFFA1E9E2),
-        Color(0xFFFFE97A),
-        Color(0xFFFF7B7B),
-        Color(0xFF37C7C4)
-    )
 
-    val colors = if (isDark) darkColors else lightColors
-    return colors[index % colors.size]
-}
 
-/* ─────────────── CATEGORY CARD + PIE ─────────────── */
+/*                          MAIN CARD                              */
 
 @Composable
 fun ExpenseBreakdownCard(
@@ -68,6 +54,7 @@ fun ExpenseBreakdownCard(
 
     Column(Modifier.padding(horizontal = 16.dp)) {
 
+        // PIE CHART CARD
         Card(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(appColors.card),
@@ -91,6 +78,7 @@ fun ExpenseBreakdownCard(
 
         Spacer(Modifier.height(16.dp))
 
+        // BREAKDOWN CARD
         Card(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(appColors.card),
@@ -114,30 +102,31 @@ fun ExpenseBreakdownCard(
     }
 }
 
-/* ─────────────── PIE CHART USING CategoryTotal ─────────────── */
+
+
+/*                           PIE CHART                             */
 
 @Composable
 fun DonutPieChart(
     categoryTotals: List<CategoryTotal>
 ) {
     val appColors = LocalAppColors.current
-    val total = categoryTotals.sumOf { it.total }
+    val totalAmount = categoryTotals.sumOf { it.total }
 
-    val slices = categoryTotals.mapIndexed { index, item ->
-        val percent = if (total == 0.0) 0f else ((item.total / total) * 100f).toFloat()
+    val slices = categoryTotals.map { item ->
+        val percent = if (totalAmount == 0.0) 0f
+        else ((item.total / totalAmount) * 100f).toFloat()
+
         PieChartData.Slice(
-            label = item.category,
+            label = item.category.displayName,
             value = percent,
-            color = categoryColor(item.category, index)
+            color = getCategoryChartColor(item.category)
         )
     }
 
     var activeSlice by remember { mutableStateOf<PieChartData.Slice?>(null) }
 
-    val pieData = PieChartData(
-        slices = slices,
-        plotType = PlotType.Pie
-    )
+    val pieData = PieChartData(slices = slices, plotType = PlotType.Pie)
 
     val config = PieChartConfig(
         showSliceLabels = false,
@@ -147,6 +136,7 @@ fun DonutPieChart(
         backgroundColor = Color.Transparent
     )
 
+    // CHART + DONUT HOLE
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -159,10 +149,10 @@ fun DonutPieChart(
             pieChartData = pieData,
             pieChartConfig = config
         ) { clicked ->
-            activeSlice = if (activeSlice?.label == clicked.label) null else clicked
+            activeSlice =
+                if (activeSlice?.label == clicked.label) null else clicked
         }
 
-        // Donut center
         Box(
             modifier = Modifier
                 .size(120.dp)
@@ -171,12 +161,14 @@ fun DonutPieChart(
         )
     }
 
-    // Selected slice info
+    // SELECTED SLICE INFO
     activeSlice?.let { slice ->
-        val percent = slice.value.toInt()
-        val amount = categoryTotals
-            .firstOrNull { it.category == slice.label }
-            ?.total ?: 0.0
+
+        val matchingCategory = categoryTotals.firstOrNull {
+            it.category.displayName == slice.label
+        }
+
+        val amount = matchingCategory?.total ?: 0.0
 
         Spacer(Modifier.height(8.dp))
 
@@ -190,7 +182,7 @@ fun DonutPieChart(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "${slice.label} — $${amount.format(2)} ($percent%)",
+                "${slice.label} — $${amount.formatAmount()} (${slice.value.toInt()}%)",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = appColors.foreground
@@ -199,24 +191,25 @@ fun DonutPieChart(
     }
 }
 
-/* ─────────────── BREAKDOWN LIST USING CategoryTotal ─────────────── */
+
+
+/*                         BREAKDOWN LIST                          */
 
 @Composable
-fun BreakdownList(
-    categoryTotals: List<CategoryTotal>
-) {
+fun BreakdownList(categoryTotals: List<CategoryTotal>) {
     val total = categoryTotals.sumOf { it.total }
 
-    categoryTotals.forEachIndexed { index, item ->
+    categoryTotals.forEach { item ->
         BreakdownRow(
-            name = item.category,
+            name = item.category.displayName,
             percent = if (total == 0.0) 0.0 else (item.total / total * 100),
             amount = item.total,
-            color = categoryColor(item.category, index)
+            color = getCategoryChartColor(item.category)
         )
         Spacer(Modifier.height(8.dp))
     }
 }
+
 
 @Composable
 fun BreakdownRow(
@@ -252,7 +245,7 @@ fun BreakdownRow(
         )
 
         Text(
-            text = "$${amount.format(2)}",
+            text = "$${amount.formatAmount(2)}",
             color = appColors.foreground,
             fontWeight = FontWeight.Bold
         )

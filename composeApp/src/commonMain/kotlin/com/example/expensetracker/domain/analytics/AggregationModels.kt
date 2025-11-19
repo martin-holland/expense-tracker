@@ -1,6 +1,7 @@
 package com.example.expensetracker.domain.analytics
 
 
+import com.example.expensetracker.model.ExpenseCategory
 import kotlinx.datetime.*
 
 data class Transaction(
@@ -12,7 +13,7 @@ data class Transaction(
 )
 
 data class CategoryTotal(
-    val category: String,
+    val category: ExpenseCategory,
     val total: Double,
     val count: Int,
     val percent: Double
@@ -37,5 +38,6 @@ data class WeeklyAggregate(
 
 data class DailyAggregate(
     val date: LocalDate,
-    val total: Double
+    val total: Double,
+    val categoryTotals: Map<ExpenseCategory, Double>
 )

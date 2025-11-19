@@ -5,8 +5,10 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -26,11 +28,14 @@ import com.example.expensetracker.viewmodel.DashBoardViewModel
 import com.example.theme.com.example.expensetracker.LocalAppColors
 import com.example.expensetracker.model.Currency
 import com.example.expensetracker.model.ExpenseCategory
+import com.example.expensetracker.view.dashboard.analytics.AnalyticsPage
+import com.example.expensetracker.view.dashboard.analytics.TrendScreen
 
 enum class DashboardChartType {
     Category,
     Weekly,
-    Trend
+    Trend,
+    Analytics
 }
 
 @Composable
@@ -74,7 +79,7 @@ fun DashboardScreen(
             currency = Currency.USD
         )
 
-        ChartSelectionRow(
+        ChartSelectionRowAnalytics(
             selected = selectedChart,
             onSelect = { selectedChart = it }
         )
@@ -98,7 +103,10 @@ fun DashboardScreen(
                     )
 
                 DashboardChartType.Trend ->
-                    TrendPlaceholder()
+                    TrendScreen(viewModel)
+
+                DashboardChartType.Analytics ->
+                    AnalyticsPage(viewModel)
             }
         }
     }
@@ -170,4 +178,41 @@ fun DashboardError(message: String?) {
         }
     }
 }
+@Composable
+fun ChartSelectionRowAnalytics(
+    selected: DashboardChartType,
+    onSelect: (DashboardChartType) -> Unit
+) {
+    val colors = LocalAppColors.current
+
+    val options = listOf(
+        DashboardChartType.Category to "Category",
+        DashboardChartType.Weekly to "Weekly",
+        DashboardChartType.Trend to "Trend",
+        DashboardChartType.Analytics to "Analytics"
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        options.forEach { (type, label) ->
+            val isSelected = selected == type
+
+            androidx.compose.material3.Button(
+                onClick = { onSelect(type) },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isSelected) colors.primary else colors.secondary,
+                    contentColor = if (isSelected) colors.primaryForeground else colors.secondaryForeground
+                )
+            ) {
+                Text(label, fontSize = 13.sp)
+            }
+        }
+    }
+}
+
 
