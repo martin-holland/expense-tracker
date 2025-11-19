@@ -11,8 +11,8 @@ import androidx.room.TypeConverters
  *
  * This is the main database configuration:
  * - Entities: ExpenseEntity, SettingsEntity, ExchangeRateEntity
- * - Version: 3
- * - Type Converters: Converters (for LocalDateTime, Currency, ExpenseCategory)
+ * - Version: 4
+ * - Type Converters: Converters (for LocalDateTime, Currency, ExpenseCategory, ThemeOption)
  *
  * To use this database:
  * 1. Get an instance using the platform-specific builder (getRoomDatabase function)
@@ -24,7 +24,7 @@ import androidx.room.TypeConverters
  */
 @Database(
     entities = [ExpenseEntity::class, SettingsEntity::class, ExchangeRateEntity::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

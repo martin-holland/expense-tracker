@@ -9,6 +9,8 @@ import com.example.expensetracker.data.repository.ExpenseRepository
 import com.example.expensetracker.model.Currency
 import com.example.expensetracker.model.Expense
 import com.example.expensetracker.model.ExpenseCategory
+import com.example.expensetracker.view.components.SnackbarMessage
+import com.example.expensetracker.view.components.SnackbarType
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlinx.coroutines.launch
@@ -41,7 +43,7 @@ class AddExpenseViewModel(
     var isSaving by mutableStateOf(false)
         private set
 
-    var saveSuccess by mutableStateOf(false)
+    var snackbarMessage by mutableStateOf<SnackbarMessage?>(null)
         private set
 
     init {
@@ -60,7 +62,13 @@ class AddExpenseViewModel(
         val monthName = today.month.name.lowercase().replaceFirstChar { it.uppercase() }
         date = "$monthName ${today.day}, ${today.year}"
     }
-
+    fun resetForm() {
+        amount = ""
+        note = ""
+        updateCurrentDate()
+        category = ExpenseCategory.FOOD
+        currency = Currency.USD
+    }
     /** Used by the DatePicker to update date manually */
     fun onDateSelected(newDate: String) {
         date = newDate
@@ -168,19 +176,25 @@ class AddExpenseViewModel(
      */
     fun saveExpense() {
         errorMessage = null
-        saveSuccess = false
+        snackbarMessage = null
 
         // Validate input
         val validationError = validateInput()
         if (validationError != null) {
-            errorMessage = validationError
+            snackbarMessage = SnackbarMessage(
+                message = validationError,
+                type = SnackbarType.ERROR
+            )
             return
         }
 
         // Parse date
         val parsedDate = parseDate(date)
         if (parsedDate == null) {
-            errorMessage = "Failed to parse date. Please try again."
+            snackbarMessage = SnackbarMessage(
+                message = "Failed to parse date. Please try again.",
+                type = SnackbarType.ERROR
+            )
             return
         }
 
@@ -200,11 +214,17 @@ class AddExpenseViewModel(
         viewModelScope.launch {
             try {
                 repository.insertExpense(expense)
-                saveSuccess = true
+                snackbarMessage = SnackbarMessage(
+                    message = "✓ Expense saved successfully!",
+                    type = SnackbarType.SUCCESS
+                )
                 // Clear form after successful save
                 clearForm()
             } catch (e: Exception) {
-                errorMessage = "Failed to save expense: ${e.message}"
+                snackbarMessage = SnackbarMessage(
+                    message = "Failed to save expense: ${e.message}",
+                    type = SnackbarType.ERROR
+                )
                 println("Error saving expense: ${e.message}")
             } finally {
                 isSaving = false
@@ -221,8 +241,8 @@ class AddExpenseViewModel(
         // Keep currency as is (user preference)
     }
 
-    /** Resets the success state (useful for UI to dismiss success message) */
-    fun resetSuccessState() {
-        saveSuccess = false
+    /** Dismisses the snackbar message */
+    fun dismissSnackbar() {
+        snackbarMessage = null
     }
 }

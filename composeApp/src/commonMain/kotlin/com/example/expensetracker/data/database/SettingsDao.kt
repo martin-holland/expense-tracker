@@ -66,5 +66,19 @@ interface SettingsDao {
      */
     @Query("UPDATE settings SET exchangeRateApiBaseUrl = :baseUrl WHERE id = 'settings'")
     suspend fun updateApiBaseUrl(baseUrl: String)
+    
+    /**
+     * Updates only the theme option
+     * @param themeOption The theme option to set (LIGHT, DARK, or SYSTEM)
+     */
+    @Query("UPDATE settings SET themeOption = :themeOption WHERE id = 'settings'")
+    suspend fun updateThemeOption(themeOption: String)
+    
+    /**
+     * Updates only the voice input enabled flag
+     * @param isEnabled Whether voice input is enabled
+     */
+    @Query("UPDATE settings SET isVoiceInputEnabled = :isEnabled WHERE id = 'settings'")
+    suspend fun updateVoiceInputEnabled(isEnabled: Boolean)
 }
 

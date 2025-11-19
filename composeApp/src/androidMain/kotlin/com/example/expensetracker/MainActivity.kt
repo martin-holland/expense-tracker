@@ -13,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.example.expensetracker.data.database.AndroidDatabaseContext
 import com.example.expensetracker.data.worker.ExchangeRateRefreshWorker
@@ -26,6 +27,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+
+        // Initialize database context FIRST before accessing database
+        AndroidDatabaseContext.init(this)
+        
+        appContext = this
 
         // Initialize database early to ensure migrations run
         // This triggers database creation and applies migrations if needed
@@ -48,27 +54,13 @@ class MainActivity : ComponentActivity() {
             android.util.Log.e("MainActivity", "Error scheduling exchange rate refresh", e)
         }
 
-        appContext = this
-
         requestNecessaryPermissions()
 
         initializeNapier()
         Napier.d("App initialized", tag = "DDD")
 
-        // Initialize database context for Android
-        AndroidDatabaseContext.init(this)
-
-        // Initialize camera only if permission is already granted
-        // Otherwise, it will be initialized when permission is granted
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
-                        PackageManager.PERMISSION_GRANTED
-        ) {
-            initializeCamera()
-        } else {
-            println(
-                    "📷 Camera permission not granted yet, will initialize after permission is granted"
-            )
-        }
+        // Camera will be initialized only when CameraScreen is displayed, not at app startup
+        // This prevents unnecessary battery usage and privacy concerns
 
         setContent { ThemeProvider { AppContent() } }
     }
@@ -82,11 +74,8 @@ class MainActivity : ComponentActivity() {
                     val isGranted = entry.value
                     if (isGranted) {
                         println("✅ Permission granted: $permission")
-                        // Initialize camera if camera permission was just granted
-                        if (permission == Manifest.permission.CAMERA) {
-                            println("📷 Camera permission granted, initializing camera...")
-                            initializeCamera()
-                        }
+                        // Camera will be initialized when CameraScreen is displayed, not here
+                        // This prevents unnecessary battery usage
                     } else {
                         println("❌ Permission denied: $permission")
                     }
@@ -134,15 +123,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun initializeCamera() {
-        try {
-            val cameraService = AndroidCameraService.getInstance(this)
-            // Start camera in coroutine
-            lifecycleScope.launch { cameraService.startCamera(this@MainActivity) }
-        } catch (e: Exception) {
-            println("❌ Error initializing camera: ${e.message}")
-        }
-    }
+    // Camera initialization moved to CameraScreen to only activate when needed
+    // This method is kept for potential future use but not called at startup
+    fun getLifecycleOwner(): LifecycleOwner = this
     companion object {
         // TODO: Consider using dependency injection or Application class instead of global context
         // This pattern works but is not ideal for testability and separation of concerns
