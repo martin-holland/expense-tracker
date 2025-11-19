@@ -62,7 +62,13 @@ class AddExpenseViewModel(
         val monthName = today.month.name.lowercase().replaceFirstChar { it.uppercase() }
         date = "$monthName ${today.day}, ${today.year}"
     }
-
+    fun resetForm() {
+        amount = ""
+        note = ""
+        updateCurrentDate()
+        category = ExpenseCategory.FOOD
+        currency = Currency.USD
+    }
     /** Used by the DatePicker to update date manually */
     fun onDateSelected(newDate: String) {
         date = newDate
