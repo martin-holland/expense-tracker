@@ -32,6 +32,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.expensetracker.model.Currency
 import com.example.expensetracker.model.ExpenseCategory
@@ -67,6 +70,25 @@ fun AddExpenseScreen(viewModel: AddExpenseViewModel = viewModel()) {
         var showDialog by remember { mutableStateOf(false) }
         var showCamera by remember { mutableStateOf(false) }
         val datePickerState = rememberDatePickerState()
+
+        // Check microphone permission when screen loads
+        LaunchedEffect(Unit) {
+                settingsViewModel.checkMicrophonePermission()
+        }
+
+        // Re-check permission when screen resumes (e.g., after granting permission in Android settings)
+        val lifecycleOwner = LocalLifecycleOwner.current
+        DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                        if (event == Lifecycle.Event.ON_RESUME) {
+                                settingsViewModel.checkMicrophonePermission()
+                        }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                        lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+        }
 
         Box(modifier = Modifier.fillMaxSize().background(appColors.background)) {
                 Column(
