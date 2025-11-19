@@ -30,13 +30,13 @@ import kotlinx.datetime.LocalDateTime
  */
 class ExpenseRepository private constructor(
     private val expenseDao: ExpenseDao
-) {
+) : IExpenseRepository {
     
     /**
      * Gets all expenses as a Flow
      * The Flow will emit updates whenever the data changes
      */
-    fun getAllExpenses(): Flow<List<Expense>> {
+    override fun getAllExpenses(): Flow<List<Expense>> {
         return expenseDao.getAllExpenses().map { entities ->
             entities.map { it.toExpense() }
         }
@@ -47,7 +47,7 @@ class ExpenseRepository private constructor(
      * @param id The unique identifier of the expense
      * @return The expense if found, null otherwise
      */
-    suspend fun getExpenseById(id: String): Expense? {
+    override suspend fun getExpenseById(id: String): Expense? {
         return expenseDao.getExpenseById(id)?.toExpense()
     }
     
@@ -56,7 +56,7 @@ class ExpenseRepository private constructor(
      * @param category The category to filter by
      * @return Flow of expenses in the specified category
      */
-    fun getExpensesByCategory(category: ExpenseCategory): Flow<List<Expense>> {
+    override fun getExpensesByCategory(category: ExpenseCategory): Flow<List<Expense>> {
         return expenseDao.getExpensesByCategory(category.name).map { entities ->
             entities.map { it.toExpense() }
         }
@@ -66,7 +66,7 @@ class ExpenseRepository private constructor(
      * Inserts a new expense or updates if it already exists
      * @param expense The expense to insert/update
      */
-    suspend fun insertExpense(expense: Expense) {
+    override suspend fun insertExpense(expense: Expense) {
         expenseDao.insertExpense(expense.toEntity())
     }
     
@@ -74,7 +74,7 @@ class ExpenseRepository private constructor(
      * Inserts multiple expenses
      * @param expenses List of expenses to insert
      */
-    suspend fun insertExpenses(expenses: List<Expense>) {
+    override suspend fun insertExpenses(expenses: List<Expense>) {
         expenseDao.insertExpenses(expenses.map { it.toEntity() })
     }
     
@@ -82,7 +82,7 @@ class ExpenseRepository private constructor(
      * Updates an existing expense
      * @param expense The expense to update
      */
-    suspend fun updateExpense(expense: Expense) {
+    override suspend fun updateExpense(expense: Expense) {
         expenseDao.updateExpense(expense.toEntity())
     }
     
@@ -90,7 +90,7 @@ class ExpenseRepository private constructor(
      * Deletes an expense
      * @param expense The expense to delete
      */
-    suspend fun deleteExpense(expense: Expense) {
+    override suspend fun deleteExpense(expense: Expense) {
         expenseDao.deleteExpense(expense.toEntity())
     }
     
@@ -98,7 +98,7 @@ class ExpenseRepository private constructor(
      * Deletes an expense by ID
      * @param id The unique identifier of the expense to delete
      */
-    suspend fun deleteExpenseById(id: String) {
+    override suspend fun deleteExpenseById(id: String) {
         expenseDao.deleteExpenseById(id)
     }
     
@@ -106,7 +106,7 @@ class ExpenseRepository private constructor(
      * Gets the count of expenses in the database
      * @return The total number of expenses
      */
-    suspend fun getExpenseCount(): Int {
+    override suspend fun getExpenseCount(): Int {
         return expenseDao.getExpenseCount()
     }
     
@@ -116,7 +116,7 @@ class ExpenseRepository private constructor(
      * @param endDate End of the date range
      * @return Flow of expenses within the date range
      */
-    fun getExpensesByDateRange(startDate: LocalDateTime, endDate: LocalDateTime): Flow<List<Expense>> {
+    override fun getExpensesByDateRange(startDate: LocalDateTime, endDate: LocalDateTime): Flow<List<Expense>> {
         return expenseDao.getExpensesByDateRange(
             startDate.toString(),
             endDate.toString()
@@ -131,7 +131,7 @@ class ExpenseRepository private constructor(
      * @param maxAmount Maximum amount
      * @return Flow of expenses within the amount range
      */
-    fun getExpensesByAmountRange(minAmount: Double, maxAmount: Double): Flow<List<Expense>> {
+    override fun getExpensesByAmountRange(minAmount: Double, maxAmount: Double): Flow<List<Expense>> {
         return expenseDao.getExpensesByAmountRange(minAmount, maxAmount).map { entities ->
             entities.map { it.toExpense() }
         }

@@ -3,8 +3,11 @@ package com.example.expensetracker.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.expensetracker.data.repository.ExchangeRateRepository
+import com.example.expensetracker.data.repository.IExchangeRateRepository
 import com.example.expensetracker.data.repository.ExpenseRepository
+import com.example.expensetracker.data.repository.IExpenseRepository
 import com.example.expensetracker.data.repository.SettingsRepository
+import com.example.expensetracker.data.repository.ISettingsRepository
 import com.example.expensetracker.domain.CurrencyConverter
 import com.example.expensetracker.model.Currency
 import com.example.expensetracker.model.Expense
@@ -26,9 +29,9 @@ import kotlinx.coroutines.launch
  */
 class CurrencyExchangeViewModel(
     private val currencyConverter: CurrencyConverter = CurrencyConverter.getInstance(),
-    private val settingsRepository: SettingsRepository = SettingsRepository.getInstance(),
-    private val exchangeRateRepository: ExchangeRateRepository = ExchangeRateRepository.getInstance(),
-    private val expenseRepository: ExpenseRepository = ExpenseRepository.getInstance()
+    private val settingsRepository: ISettingsRepository = SettingsRepository.getInstance(),
+    private val exchangeRateRepository: IExchangeRateRepository = ExchangeRateRepository.getInstance(),
+    private val expenseRepository: IExpenseRepository = ExpenseRepository.getInstance()
 ) : ViewModel() {
 
     // Base currency

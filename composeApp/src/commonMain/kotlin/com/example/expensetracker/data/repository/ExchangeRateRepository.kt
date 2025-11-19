@@ -36,9 +36,9 @@ import kotlinx.datetime.toLocalDateTime
  */
 class ExchangeRateRepository private constructor(
     private val exchangeRateDao: ExchangeRateDao,
-    private val settingsRepository: SettingsRepository,
+    private val settingsRepository: ISettingsRepository,
     private val apiService: ExchangeRateApiService
-) {
+) : IExchangeRateRepository {
     
     companion object {
         private var instance: ExchangeRateRepository? = null
@@ -95,10 +95,10 @@ class ExchangeRateRepository private constructor(
      * @param date Optional date for historical rates. If null, uses latest rate
      * @return Flow emitting the exchange rate, or null if unavailable
      */
-    fun getExchangeRate(
+    override fun getExchangeRate(
         baseCurrency: Currency,
         targetCurrency: Currency,
-        date: LocalDateTime? = null
+        date: LocalDateTime?
     ): Flow<Double?> {
         // If same currency, return 1.0
         if (baseCurrency == targetCurrency) {
@@ -156,10 +156,10 @@ class ExchangeRateRepository private constructor(
      * @param date Optional date for historical rates. If null, uses latest rate
      * @return The exchange rate, or null if no cache exists at all
      */
-    suspend fun getExchangeRateSync(
+    override suspend fun getExchangeRateSync(
         baseCurrency: Currency,
         targetCurrency: Currency,
-        date: LocalDateTime? = null
+        date: LocalDateTime?
     ): Double? {
         // If same currency, return 1.0
         if (baseCurrency == targetCurrency) {
@@ -322,7 +322,7 @@ class ExchangeRateRepository private constructor(
      * @return Result indicating success or failure
      */
     @OptIn(kotlin.time.ExperimentalTime::class)
-    suspend fun refreshExchangeRates(baseCurrency: Currency): Result<Unit> {
+    override suspend fun refreshExchangeRates(baseCurrency: Currency): Result<Unit> {
         return try {
             // Get API configuration from settings
             val apiKey = settingsRepository.getApiKeySync()
@@ -378,7 +378,7 @@ class ExchangeRateRepository private constructor(
      * @return true if rates need refresh, false otherwise
      */
     @OptIn(kotlin.time.ExperimentalTime::class)
-    suspend fun isRateStale(baseCurrency: Currency): Boolean {
+    override suspend fun isRateStale(baseCurrency: Currency): Boolean {
         val latestRates = exchangeRateDao.getRatesSync(baseCurrency.code, null)
         
         if (latestRates.isEmpty()) {
@@ -412,7 +412,7 @@ class ExchangeRateRepository private constructor(
      * Cleans up exchange rates older than 30 days
      */
     @OptIn(kotlin.time.ExperimentalTime::class)
-    suspend fun clearOldRates() {
+    override suspend fun clearOldRates() {
         try {
             // Calculate date 30 days ago
             val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
@@ -436,9 +436,9 @@ class ExchangeRateRepository private constructor(
      * @param date Optional date. If null, gets latest rates
      * @return Map of Currency to exchange rate
      */
-    suspend fun getAllRatesForBase(
+    override suspend fun getAllRatesForBase(
         baseCurrency: Currency,
-        date: LocalDateTime? = null
+        date: LocalDateTime?
     ): Map<Currency, Double> {
         val dateString = date?.date?.toString()
         val entities = exchangeRateDao.getRatesSync(baseCurrency.code, dateString)

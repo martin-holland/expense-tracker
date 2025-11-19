@@ -3,7 +3,9 @@ package com.example.expensetracker.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.expensetracker.data.repository.ExchangeRateRepository
+import com.example.expensetracker.data.repository.IExchangeRateRepository
 import com.example.expensetracker.data.repository.SettingsRepository
+import com.example.expensetracker.data.repository.ISettingsRepository
 import com.example.expensetracker.model.Currency
 import com.example.expensetracker.model.ThemeOption
 import com.example.expensetracker.service.getMicrophoneService
@@ -23,8 +25,8 @@ import kotlinx.datetime.LocalDateTime
  * voice input) required by the Settings screen.
  */
 class SettingsViewModel(
-    private val settingsRepository: SettingsRepository = SettingsRepository.getInstance(),
-    private val exchangeRateRepository: ExchangeRateRepository = ExchangeRateRepository.getInstance()
+    private val settingsRepository: ISettingsRepository = SettingsRepository.getInstance(),
+    private val exchangeRateRepository: IExchangeRateRepository = ExchangeRateRepository.getInstance()
 ) : ViewModel() {
 
     private val _baseCurrency = MutableStateFlow(Currency.USD)

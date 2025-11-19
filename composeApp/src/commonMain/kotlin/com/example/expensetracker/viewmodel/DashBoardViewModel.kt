@@ -9,6 +9,7 @@ import com.example.expensetracker.domain.analytics.MonthlyAggregate
 import com.example.expensetracker.domain.analytics.Transaction
 import com.example.expensetracker.domain.analytics.WeeklyAggregate
 import com.example.expensetracker.data.repository.ExpenseRepository
+import com.example.expensetracker.data.repository.IExpenseRepository
 import com.example.expensetracker.model.Expense
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -49,9 +50,9 @@ data class DashboardUiState(
 /*                 VIEWMODEL IMPLEMENTATION            */
 /*────────────────────────────────────────────────────*/
 
-class DashBoardViewModel : ViewModel() {
-
-    private val repository = ExpenseRepository.getInstance()
+class DashBoardViewModel(
+    private val repository: IExpenseRepository = ExpenseRepository.getInstance()
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()

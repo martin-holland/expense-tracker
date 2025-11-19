@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.expensetracker.data.repository.ExpenseRepository
+import com.example.expensetracker.data.repository.IExpenseRepository
 import com.example.expensetracker.model.Currency
 import com.example.expensetracker.model.Expense
 import com.example.expensetracker.model.ExpenseCategory
@@ -19,7 +20,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
 class AddExpenseViewModel(
-        private val repository: ExpenseRepository = ExpenseRepository.getInstance()
+        private val repository: IExpenseRepository = ExpenseRepository.getInstance()
 ) : ViewModel() {
 
     var currency by mutableStateOf(Currency.USD)
