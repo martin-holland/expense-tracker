@@ -17,7 +17,6 @@ import androidx.compose.ui.unit.dp
 import com.example.expensetracker.view.AddExpenseScreen
 import com.example.expensetracker.view.dashboard.DashboardScreen
 import com.example.expensetracker.view.ExpenseHistoryScreen
-import com.example.expensetracker.view.PreviewScreen
 import com.example.expensetracker.view.SettingsScreen
 
 import com.example.theme.com.example.expensetracker.LocalAppColors
@@ -30,7 +29,6 @@ enum class AppScreen(val title: String, val icon: ImageVector) {
     ADD("Add", Icons.Filled.Add),
     HISTORY("History", Icons.Filled.History),
     SETTINGS("Settings", Icons.Filled.Settings),
-    PREVIEW("Preview", Icons.Filled.Camera)
 
 }
 
@@ -61,7 +59,6 @@ fun AppContent() {
                 AppScreen.ADD -> AddExpenseScreen()
                 AppScreen.HISTORY -> ExpenseHistoryScreen()
                 AppScreen.SETTINGS ->SettingsScreen()
-                AppScreen.PREVIEW -> PreviewScreen()
             }
         }
     }

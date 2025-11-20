@@ -41,9 +41,11 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.expensetracker.services.AndroidCameraService
 import com.example.expensetracker.services.CameraState
 import com.example.expensetracker.services.TextRecognitionAnalyzer
 import com.example.expensetracker.services.decodeByteArrayToImageBitmap
@@ -190,6 +192,28 @@ actual fun CameraScreen() {
                                 color = MaterialTheme.colorScheme.secondary
                             )
                         }
+                    }
+                    cameraState == CameraState.READY && photoData == null -> {
+                        // Live camera preview using AndroidCameraService
+                        AndroidView(
+                            factory = { context ->
+                                PreviewView(context).apply {
+                                    layoutParams = android.widget.LinearLayout.LayoutParams(
+                                        android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                                        android.widget.LinearLayout.LayoutParams.MATCH_PARENT
+                                    )
+                                    scaleType = PreviewView.ScaleType.FILL_CENTER
+                                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                                }.also { previewView ->
+                                    // Set up the preview view with camera service
+                                    (cameraService as? AndroidCameraService)?.setupPreviewView(
+                                        previewView,
+                                        lifecycleOwner
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
                     cameraState == CameraState.INITIALIZING -> {
                         Column(

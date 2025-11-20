@@ -7,6 +7,7 @@ import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import com.example.expensetracker.MainActivity
@@ -29,19 +30,23 @@ class AndroidCameraService(private val context: Context) : CameraService {
 
     private var imageCapture: ImageCapture? = null
     private var cameraProvider: ProcessCameraProvider? = null
+    private var preview: Preview? = null
     private val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
-    
+
     @Volatile
     private var cameraState: CameraState = CameraState.NOT_INITIALIZED
-    
+
     // For 30-second timeout in IDLE state
     private var idleTimeoutJob: kotlinx.coroutines.Job? = null
+
+    // Store the preview view for live preview
+    private var currentPreviewView: PreviewView? = null
 
     override suspend fun takePhoto(): ByteArray? =
         withContext(Dispatchers.Main) {
             try {
                 println("📷 Android: Taking photo...")
-                
+
                 // Check camera state
                 if (cameraState != CameraState.READY) {
                     println("❌ Android: Camera not ready. Current state: $cameraState")
@@ -113,11 +118,11 @@ class AndroidCameraService(private val context: Context) : CameraService {
                         null
                     }
                 }
-                
+
                 // Photo captured successfully, return to IDLE state
                 // Camera will be stopped by the UI layer after photo is taken
                 cameraState = CameraState.READY
-                
+
                 photoBytes
             } catch (e: Exception) {
                 println("❌ Android: Error taking photo: ${e.message}")
@@ -134,46 +139,47 @@ class AndroidCameraService(private val context: Context) : CameraService {
                     println("❌ Android: Invalid LifecycleOwner type")
                     return@withContext false
                 }
-                
+
                 // Cancel any pending idle timeout
                 idleTimeoutJob?.cancel()
                 idleTimeoutJob = null
-                
+
                 // Check if camera is already starting or ready
                 if (cameraState == CameraState.INITIALIZING) {
                     println("⚠️ Android: Camera already initializing, skipping...")
                     return@withContext false
                 }
-                
+
                 if (cameraState == CameraState.READY) {
                     println("✅ Android: Camera already ready")
                     return@withContext true
                 }
-                
+
                 // INSTANT RESUME: If in IDLE state, camera provider is warm - just rebind!
                 if (cameraState == CameraState.IDLE && cameraProvider != null && imageCapture != null) {
                     println("🔄 Android: Quick resume from IDLE state (instant, no reinitialization)")
-                    
+
                     val preview = Preview.Builder().build()
                     val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-                    
+
                     // Rebind use cases (camera provider already initialized)
+                    cameraProvider?.unbindAll()
                     cameraProvider?.bindToLifecycle(
                         lifecycleOwner,
                         cameraSelector,
                         preview,
                         imageCapture
                     )
-                    
+
                     cameraState = CameraState.READY
                     println("✅ Android: Camera resumed instantly from warm state")
                     return@withContext true
                 }
-                
+
                 // COLD START: Full initialization needed
                 println("🎥 Android: Starting camera initialization (cold start: 1-2s)...")
                 cameraState = CameraState.INITIALIZING
-                
+
                 // Use suspendCancellableCoroutine to convert ListenableFuture to coroutine
                 val provider = suspendCancellableCoroutine<ProcessCameraProvider> { continuation ->
                     val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
@@ -186,11 +192,11 @@ class AndroidCameraService(private val context: Context) : CameraService {
                         }
                     }, ContextCompat.getMainExecutor(context))
                 }
-                
+
                 cameraProvider = provider
 
                 // Preview
-                val preview = Preview.Builder().build()
+                preview = Preview.Builder().build()
 
                 // Image capture
                 imageCapture =
@@ -223,19 +229,43 @@ class AndroidCameraService(private val context: Context) : CameraService {
             }
         }
 
+    // NEW METHOD: Set up preview view for live camera feed
+    fun setupPreviewView(previewView: PreviewView, lifecycleOwner: LifecycleOwner): Boolean {
+        return try {
+            currentPreviewView = previewView
+
+            // Configure preview view
+            previewView.scaleType = PreviewView.ScaleType.FILL_CENTER
+            previewView.implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+
+            // Set the surface provider for the preview
+            preview?.setSurfaceProvider(previewView.surfaceProvider)
+
+            println("✅ Android: Preview view setup successfully")
+            true
+        } catch (e: Exception) {
+            println("❌ Android: Error setting up preview view: ${e.message}")
+            e.printStackTrace()
+            false
+        }
+    }
+
     override suspend fun pauseCamera() = withContext(Dispatchers.Main) {
         try {
             println("⏸️ Android: Pausing camera (entering warm IDLE state)...")
-            
+
             // Cancel any existing timeout
             idleTimeoutJob?.cancel()
-            
+
             // Unbind use cases but keep camera provider and imageCapture (warm state)
             cameraProvider?.unbindAll()
-            
+
+            // Clear preview view
+            currentPreviewView = null
+
             cameraState = CameraState.IDLE
             println("✅ Android: Camera paused (IDLE - 5% battery, 30s timeout starting)")
-            
+
             // Start 30-second timeout
             idleTimeoutJob = CoroutineScope(Dispatchers.Main).launch {
                 delay(30_000) // 30 seconds
@@ -250,7 +280,7 @@ class AndroidCameraService(private val context: Context) : CameraService {
             cameraState = CameraState.ERROR
         }
     }
-    
+
     private suspend fun releaseCamera() = withContext(Dispatchers.Main) {
         try {
             println("🔓 Android: Releasing camera (RELEASED state)...")
@@ -259,6 +289,8 @@ class AndroidCameraService(private val context: Context) : CameraService {
             cameraProvider?.unbindAll()
             cameraProvider = null
             imageCapture = null
+            preview = null
+            currentPreviewView = null
             cameraState = CameraState.RELEASED
             println("✅ Android: Camera released, transitioning to NOT_INITIALIZED")
             // Immediately transition to NOT_INITIALIZED (RELEASED is transient)
@@ -278,6 +310,8 @@ class AndroidCameraService(private val context: Context) : CameraService {
             cameraProvider?.unbindAll()
             cameraProvider = null
             imageCapture = null
+            preview = null
+            currentPreviewView = null
             cameraState = CameraState.NOT_INITIALIZED
             println("✅ Android: Camera stopped successfully")
         } catch (e: Exception) {
@@ -300,7 +334,7 @@ class AndroidCameraService(private val context: Context) : CameraService {
     override fun isCameraReady(): Boolean {
         return cameraState == CameraState.READY
     }
-    
+
     override fun getCameraState(): CameraState {
         return cameraState
     }
@@ -310,7 +344,7 @@ class AndroidCameraService(private val context: Context) : CameraService {
         if (imageCapture != null) {
             return true
         }
-        
+
         // Try to initialize camera if we have permission
         if (hasCameraPermission()) {
             // We need a LifecycleOwner, but we can't get it here
@@ -319,7 +353,7 @@ class AndroidCameraService(private val context: Context) : CameraService {
             println("⚠️ Android: Camera not initialized. Please ensure camera is initialized in MainActivity.")
             return false
         }
-        
+
         return false
     }
 
