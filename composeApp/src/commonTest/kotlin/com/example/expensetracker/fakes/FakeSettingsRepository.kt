@@ -23,6 +23,14 @@ class FakeSettingsRepository : ISettingsRepository {
     // In-memory settings state
     private val _settings = MutableStateFlow(AppSettings())
     
+    // Separate StateFlows for each property to ensure reactivity
+    private val _baseCurrency = MutableStateFlow(_settings.value.baseCurrency)
+    private val _apiKey = MutableStateFlow(_settings.value.exchangeRateApiKey)
+    private val _apiBaseUrl = MutableStateFlow(_settings.value.exchangeRateApiBaseUrl)
+    private val _lastUpdate = MutableStateFlow(_settings.value.lastExchangeRateUpdate)
+    private val _themeOption = MutableStateFlow(_settings.value.themeOption)
+    private val _voiceInputEnabled = MutableStateFlow(_settings.value.isVoiceInputEnabled)
+    
     // Test control flags
     var shouldThrowError = false
     var errorMessage = "Test error"
@@ -35,6 +43,19 @@ class FakeSettingsRepository : ISettingsRepository {
     var updateApiKeyCalled = 0
     var saveSettingsCalled = 0
     var lastSavedSettings: AppSettings? = null
+    
+    /**
+     * Update all derived flows when settings change
+     */
+    private fun updateDerivedFlows() {
+        val settings = _settings.value
+        _baseCurrency.value = settings.baseCurrency
+        _apiKey.value = settings.exchangeRateApiKey
+        _apiBaseUrl.value = settings.exchangeRateApiBaseUrl
+        _lastUpdate.value = settings.lastExchangeRateUpdate
+        _themeOption.value = settings.themeOption
+        _voiceInputEnabled.value = settings.isVoiceInputEnabled
+    }
     
     /**
      * Get all settings as a Flow
@@ -58,7 +79,7 @@ class FakeSettingsRepository : ISettingsRepository {
      * Get base currency as a Flow
      */
     override fun getBaseCurrency(): Flow<Currency> {
-        return MutableStateFlow(_settings.value.baseCurrency)
+        return _baseCurrency
     }
     
     /**
@@ -78,6 +99,7 @@ class FakeSettingsRepository : ISettingsRepository {
         if (delayMs > 0) delay(delayMs)
         if (shouldThrowError) throw Exception(errorMessage)
         _settings.value = _settings.value.copy(baseCurrency = currency)
+        updateDerivedFlows()
     }
     
     /**
@@ -91,7 +113,7 @@ class FakeSettingsRepository : ISettingsRepository {
      * Get API key as a Flow
      */
     override fun getApiKey(): Flow<String> {
-        return MutableStateFlow(_settings.value.exchangeRateApiKey)
+        return _apiKey
     }
     
     /**
@@ -111,6 +133,7 @@ class FakeSettingsRepository : ISettingsRepository {
         if (delayMs > 0) delay(delayMs)
         if (shouldThrowError) throw Exception(errorMessage)
         _settings.value = _settings.value.copy(exchangeRateApiKey = apiKey)
+        updateDerivedFlows()
     }
     
     /**
@@ -124,7 +147,7 @@ class FakeSettingsRepository : ISettingsRepository {
      * Get API base URL as a Flow
      */
     override fun getApiBaseUrl(): Flow<String> {
-        return MutableStateFlow(_settings.value.exchangeRateApiBaseUrl)
+        return _apiBaseUrl
     }
     
     /**
@@ -143,6 +166,7 @@ class FakeSettingsRepository : ISettingsRepository {
         if (delayMs > 0) delay(delayMs)
         if (shouldThrowError) throw Exception(errorMessage)
         _settings.value = _settings.value.copy(exchangeRateApiBaseUrl = baseUrl)
+        updateDerivedFlows()
     }
     
     /**
@@ -165,7 +189,7 @@ class FakeSettingsRepository : ISettingsRepository {
      * Get last exchange rate update as a Flow
      */
     override fun getLastExchangeRateUpdate(): Flow<LocalDateTime?> {
-        return MutableStateFlow(_settings.value.lastExchangeRateUpdate)
+        return _lastUpdate
     }
     
     /**
@@ -175,6 +199,7 @@ class FakeSettingsRepository : ISettingsRepository {
         if (delayMs > 0) delay(delayMs)
         if (shouldThrowError) throw Exception(errorMessage)
         _settings.value = _settings.value.copy(lastExchangeRateUpdate = timestamp)
+        updateDerivedFlows()
     }
     
     /**
@@ -190,7 +215,7 @@ class FakeSettingsRepository : ISettingsRepository {
      * Get theme option as a Flow
      */
     override fun getThemeOption(): Flow<ThemeOption> {
-        return MutableStateFlow(_settings.value.themeOption)
+        return _themeOption
     }
     
     /**
@@ -209,6 +234,7 @@ class FakeSettingsRepository : ISettingsRepository {
         if (delayMs > 0) delay(delayMs)
         if (shouldThrowError) throw Exception(errorMessage)
         _settings.value = _settings.value.copy(themeOption = themeOption)
+        updateDerivedFlows()
     }
     
     /**
@@ -222,7 +248,7 @@ class FakeSettingsRepository : ISettingsRepository {
      * Get voice input enabled as a Flow
      */
     override fun getVoiceInputEnabled(): Flow<Boolean> {
-        return MutableStateFlow(_settings.value.isVoiceInputEnabled)
+        return _voiceInputEnabled
     }
     
     /**
@@ -241,6 +267,7 @@ class FakeSettingsRepository : ISettingsRepository {
         if (delayMs > 0) delay(delayMs)
         if (shouldThrowError) throw Exception(errorMessage)
         _settings.value = _settings.value.copy(isVoiceInputEnabled = isEnabled)
+        updateDerivedFlows()
     }
     
     /**
@@ -259,6 +286,7 @@ class FakeSettingsRepository : ISettingsRepository {
         if (delayMs > 0) delay(delayMs)
         if (shouldThrowError) throw Exception(errorMessage)
         _settings.value = settings
+        updateDerivedFlows()
     }
     
     // Test helper methods
@@ -297,6 +325,7 @@ class FakeSettingsRepository : ISettingsRepository {
      */
     fun reset() {
         _settings.value = AppSettings()
+        updateDerivedFlows()
         shouldThrowError = false
         errorMessage = "Test error"
         delayMs = 0L

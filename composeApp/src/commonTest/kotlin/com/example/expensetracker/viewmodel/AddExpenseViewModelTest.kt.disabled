@@ -1,0 +1,346 @@
+package com.example.expensetracker.viewmodel
+
+import com.example.expensetracker.model.Currency
+import com.example.expensetracker.model.ExpenseCategory
+import com.example.expensetracker.view.components.SnackbarType
+import kotlinx.coroutines.test.runTest
+import kotlin.test.*
+
+/**
+ * Unit tests for AddExpenseViewModel
+ * 
+ * Note: These tests focus on business logic that doesn't require repository interaction.
+ * Full integration tests with mocked repository would require refactoring to use
+ * dependency injection with interfaces.
+ * 
+ * Tests covered:
+ * - Initialization
+ * - Form field updates
+ * - Input validation
+ * - Date formatting
+ * - State management
+ */
+class AddExpenseViewModelTest {
+    
+    private lateinit var viewModel: AddExpenseViewModel
+    
+    @BeforeTest
+    fun setup() {
+        // Create ViewModel with default (singleton) repository
+        // Note: In a production setup, we'd inject a fake repository here
+        viewModel = AddExpenseViewModel()
+    }
+    
+    // ============================================
+    // Initialization Tests
+    // ============================================
+    
+    @Test
+    fun `initial state has empty form fields`() {
+        assertEquals("", viewModel.amount, "Amount should be empty initially")
+        assertEquals("", viewModel.note, "Note should be empty initially")
+        assertNull(viewModel.category, "Category should be null initially")
+        assertNull(viewModel.errorMessage, "Error message should be null initially")
+        assertFalse(viewModel.isSaving, "Should not be saving initially")
+        assertNull(viewModel.snackbarMessage, "Snackbar message should be null initially")
+    }
+    
+    @Test
+    fun `default currency is USD`() {
+        assertEquals(Currency.USD, viewModel.currency, "Default currency should be USD")
+    }
+    
+    @Test
+    fun `date is set to today on init`() {
+        assertTrue(viewModel.date.isNotBlank(), "Date should not be blank")
+        // Check format: "Month Day, Year"
+        val datePattern = Regex("^[A-Z][a-z]+ \\d+, \\d{4}$")
+        assertTrue(
+            viewModel.date.matches(datePattern),
+            "Date should match format 'Month Day, Year', got: ${viewModel.date}"
+        )
+    }
+    
+    // ============================================
+    // Form Field Update Tests
+    // ============================================
+    
+    @Test
+    fun `onCurrencySelected updates currency and clears error`() {
+        viewModel.errorMessage = "Some error"
+        
+        viewModel.onCurrencySelected(Currency.EUR)
+        
+        assertEquals(Currency.EUR, viewModel.currency, "Currency should be updated to EUR")
+        assertNull(viewModel.errorMessage, "Error message should be cleared")
+    }
+    
+    @Test
+    fun `onAmountChanged accepts valid decimal values`() {
+        val validAmounts = listOf("45.50", "100", "0.99", "")
+        
+        validAmounts.forEach { amount ->
+            viewModel.onAmountChanged(amount)
+            assertEquals(amount, viewModel.amount, "Should accept valid amount: $amount")
+        }
+    }
+    
+    @Test
+    fun `onAmountChanged accepts partial decimal input`() {
+        // Users should be able to type "." before the decimal digits
+        viewModel.onAmountChanged("45")
+        assertEquals("45", viewModel.amount)
+        
+        viewModel.onAmountChanged("45.")
+        assertEquals("45.", viewModel.amount)
+        
+        viewModel.onAmountChanged("45.5")
+        assertEquals("45.5", viewModel.amount)
+        
+        viewModel.onAmountChanged("45.50")
+        assertEquals("45.50", viewModel.amount)
+    }
+    
+    @Test
+    fun `onAmountChanged rejects invalid input`() {
+        viewModel.onAmountChanged("50.00")
+        assertEquals("50.00", viewModel.amount)
+        
+        // Try invalid inputs - amount should remain unchanged
+        val invalidInputs = listOf("abc", "12.34.56", "12a", "-10", "10-5")
+        invalidInputs.forEach { invalid ->
+            viewModel.onAmountChanged(invalid)
+            assertEquals(
+                "50.00",
+                viewModel.amount,
+                "Should reject invalid input: $invalid"
+            )
+        }
+    }
+    
+    @Test
+    fun `onCategorySelected updates category and clears error`() {
+        viewModel.errorMessage = "Some error"
+        
+        viewModel.onCategorySelected(ExpenseCategory.FOOD)
+        
+        assertEquals(ExpenseCategory.FOOD, viewModel.category, "Category should be updated")
+        assertNull(viewModel.errorMessage, "Error message should be cleared")
+    }
+    
+    @Test
+    fun `onNoteChanged updates note`() {
+        viewModel.onNoteChanged("Test note")
+        assertEquals("Test note", viewModel.note, "Note should be updated")
+        
+        viewModel.onNoteChanged("Different note")
+        assertEquals("Different note", viewModel.note, "Note should be updated again")
+    }
+    
+    @Test
+    fun `onDateSelected updates date`() {
+        val testDate = "December 25, 2024"
+        viewModel.onDateSelected(testDate)
+        assertEquals(testDate, viewModel.date, "Date should be updated")
+    }
+    
+    @Test
+    fun `field updates clear error messages`() {
+        viewModel.errorMessage = "Some error"
+        
+        viewModel.onAmountChanged("100")
+        assertNull(viewModel.errorMessage, "Error should be cleared after amount change")
+        
+        viewModel.errorMessage = "Another error"
+        viewModel.onCategorySelected(ExpenseCategory.TRAVEL)
+        assertNull(viewModel.errorMessage, "Error should be cleared after category change")
+        
+        viewModel.errorMessage = "Yet another error"
+        viewModel.onCurrencySelected(Currency.GBP)
+        assertNull(viewModel.errorMessage, "Error should be cleared after currency change")
+    }
+    
+    // ============================================
+    // Date Format Tests
+    // ============================================
+    
+    @Test
+    fun `date format is consistent`() {
+        // The date should always follow "Month Day, Year" format
+        val datePattern = Regex("^[A-Z][a-z]+ \\d+, \\d{4}$")
+        assertTrue(
+            viewModel.date.matches(datePattern),
+            "Date format should be 'Month Day, Year'"
+        )
+    }
+    
+    // ============================================
+    // Validation Tests (Client-Side)
+    // ============================================
+    
+    @Test
+    fun `saveExpense shows error for empty amount`() {
+        viewModel.amount = ""
+        viewModel.category = ExpenseCategory.FOOD
+        viewModel.date = "November 7, 2024"
+        
+        viewModel.saveExpense()
+        
+        assertNotNull(viewModel.snackbarMessage, "Should show snackbar for empty amount")
+        assertEquals(
+            SnackbarType.ERROR,
+            viewModel.snackbarMessage?.type,
+            "Snackbar should be error type"
+        )
+        assertTrue(
+            viewModel.snackbarMessage?.message?.contains("amount", ignoreCase = true) == true,
+            "Error message should mention amount"
+        )
+    }
+    
+    @Test
+    fun `saveExpense shows error for invalid amount`() {
+        viewModel.amount = "." // Just a dot is invalid
+        viewModel.category = ExpenseCategory.FOOD
+        
+        viewModel.saveExpense()
+        
+        assertNotNull(viewModel.snackbarMessage, "Should show snackbar for invalid amount")
+        assertEquals(
+            SnackbarType.ERROR,
+            viewModel.snackbarMessage?.type,
+            "Snackbar should be error type"
+        )
+    }
+    
+    @Test
+    fun `saveExpense shows error for null category`() {
+        viewModel.amount = "50.00"
+        viewModel.category = null
+        
+        viewModel.saveExpense()
+        
+        assertNotNull(viewModel.snackbarMessage, "Should show snackbar for null category")
+        assertTrue(
+            viewModel.snackbarMessage?.message?.contains("category", ignoreCase = true) == true,
+            "Error message should mention category"
+        )
+    }
+    
+    @Test
+    fun `saveExpense validates before attempting save`() {
+        viewModel.amount = "" // Invalid
+        
+        val initialIsSaving = viewModel.isSaving
+        viewModel.saveExpense()
+        
+        // Should not start saving if validation fails
+        assertFalse(viewModel.isSaving, "Should not set isSaving flag for invalid input")
+        assertNotNull(viewModel.snackbarMessage, "Should show validation error")
+        assertEquals(SnackbarType.ERROR, viewModel.snackbarMessage?.type)
+    }
+    
+    // ============================================
+    // Form Management Tests
+    // ============================================
+    
+    @Test
+    fun `resetForm clears amount and note`() {
+        viewModel.amount = "50.00"
+        viewModel.note = "Test"
+        viewModel.category = ExpenseCategory.TRAVEL
+        
+        viewModel.resetForm()
+        
+        assertEquals("", viewModel.amount, "Amount should be cleared")
+        assertEquals("", viewModel.note, "Note should be cleared")
+    }
+    
+    @Test
+    fun `resetForm sets default category to FOOD`() {
+        viewModel.category = ExpenseCategory.TRAVEL
+        
+        viewModel.resetForm()
+        
+        assertEquals(
+            ExpenseCategory.FOOD,
+            viewModel.category,
+            "Should reset to default category FOOD"
+        )
+    }
+    
+    @Test
+    fun `resetForm preserves currency`() {
+        viewModel.currency = Currency.EUR
+        
+        viewModel.resetForm()
+        
+        assertEquals(Currency.EUR, viewModel.currency, "Currency should be preserved")
+    }
+    
+    @Test
+    fun `dismissSnackbar clears snackbar message`() {
+        // Set a snackbar message
+        viewModel.amount = "" // Invalid - triggers error snackbar
+        viewModel.saveExpense()
+        
+        assertNotNull(viewModel.snackbarMessage, "Should have snackbar message")
+        
+        viewModel.dismissSnackbar()
+        
+        assertNull(viewModel.snackbarMessage, "Snackbar message should be cleared")
+    }
+    
+    // ============================================
+    // Amount Regex Validation Tests
+    // ============================================
+    
+    @Test
+    fun `amount regex accepts all valid formats`() {
+        val validFormats = listOf(
+            "123",      // Whole number
+            "123.45",   // Decimal
+            "0.99",     // Less than 1
+            ".99",      // Starting with decimal
+            "1000.00",  // Large amount
+            "0",        // Zero
+            "",         // Empty (for clearing)
+        )
+        
+        validFormats.forEach { format ->
+            viewModel.onAmountChanged("")  // Reset
+            viewModel.onAmountChanged(format)
+            assertEquals(
+                format,
+                viewModel.amount,
+                "Should accept valid format: '$format'"
+            )
+        }
+    }
+    
+    @Test
+    fun `amount regex rejects all invalid formats`() {
+        viewModel.onAmountChanged("100") // Set valid initial value
+        
+        val invalidFormats = listOf(
+            "abc",      // Letters
+            "12.34.56", // Multiple decimals
+            "12a",      // Mixed
+            "-10",      // Negative
+            "10+5",     // Plus sign
+            "1,000",    // Comma
+            "10%",      // Percent
+            "$50",      // Currency symbol
+        )
+        
+        invalidFormats.forEach { format ->
+            viewModel.onAmountChanged(format)
+            assertEquals(
+                "100",
+                viewModel.amount,
+                "Should reject invalid format: '$format'"
+            )
+        }
+    }
+}
+
