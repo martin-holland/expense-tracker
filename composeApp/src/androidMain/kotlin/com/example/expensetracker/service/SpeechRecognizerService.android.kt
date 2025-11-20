@@ -59,6 +59,10 @@ class AndroidSpeechRecognizerService(private val context: Context) {
                         putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
                         // Get confidence scores
                         putExtra(RecognizerIntent.EXTRA_CONFIDENCE_SCORES, true)
+                        // Increase timeout to prevent early cutoff (10 seconds of silence, 30 seconds total)
+                        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 10000L)
+                        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 10000L)
+                        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 30000L)
                     }
 
             speechRecognizer?.startListening(intent)

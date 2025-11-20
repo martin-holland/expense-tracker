@@ -245,4 +245,32 @@ class AddExpenseViewModel(
     fun dismissSnackbar() {
         snackbarMessage = null
     }
+
+    /**
+     * Populate form fields from parsed expense data
+     * This allows seamless transition from voice input to manual form
+     */
+    fun populateFromParsedData(data: com.example.expensetracker.service.ParsedExpenseData) {
+        // Populate amount if available
+        data.amount?.let {
+            amount = it.toString()
+        }
+        
+        // Populate currency if available
+        data.currency?.let {
+            currency = it
+        }
+        
+        // Populate category if available
+        data.category?.let {
+            category = it
+        }
+        
+        // Populate note/description if available
+        if (data.description.isNotBlank() && data.description != "No description") {
+            note = data.description
+        }
+        
+        errorMessage = null
+    }
 }

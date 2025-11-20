@@ -15,6 +15,40 @@ import androidx.compose.ui.unit.dp
 import com.example.expensetracker.viewmodel.AndroidVoiceInputHelper
 import com.example.expensetracker.viewmodel.VoiceInputViewModel
 
+// Shared helper instance to persist across button recompositions
+private val helperMap = mutableMapOf<VoiceInputViewModel, AndroidVoiceInputHelper>()
+
+/**
+ * Manages the helper lifecycle at the section level (not button level)
+ * This prevents disposal when button moves position in composition tree
+ */
+@Composable
+actual fun SpeechRecognitionHelperManager(voiceViewModel: VoiceInputViewModel) {
+    val context = LocalContext.current
+    val readyForCleanup by voiceViewModel.recognizerReadyForCleanup.collectAsState()
+    
+    // Create helper at section level
+    DisposableEffect(voiceViewModel) {
+        val helper = helperMap.getOrPut(voiceViewModel) {
+            AndroidVoiceInputHelper(context, voiceViewModel)
+        }
+        
+        onDispose {
+            helper.cleanup()
+            helperMap.remove(voiceViewModel)
+        }
+    }
+    
+    // Clean up service after success/error to prevent ERROR_RECOGNIZER_BUSY
+    LaunchedEffect(readyForCleanup) {
+        if (readyForCleanup) {
+            val helper = helperMap[voiceViewModel]
+            helper?.cleanup()
+            voiceViewModel.acknowledgeCleanup()
+        }
+    }
+}
+
 @Composable
 actual fun SpeechRecognitionButton(
     voiceViewModel: VoiceInputViewModel,
@@ -22,12 +56,11 @@ actual fun SpeechRecognitionButton(
     accentGreen: Color
 ) {
     val context = LocalContext.current
-    var helper by remember { mutableStateOf<AndroidVoiceInputHelper?>(null) }
-
-    // Cleanup on disposal
-    DisposableEffect(Unit) {
-        onDispose {
-            helper?.cleanup()
+    
+    // Get existing helper (created at section level)
+    val helper = remember(voiceViewModel) {
+        helperMap.getOrPut(voiceViewModel) {
+            AndroidVoiceInputHelper(context, voiceViewModel)
         }
     }
 
@@ -35,20 +68,18 @@ actual fun SpeechRecognitionButton(
         onClick = {
             when (speechState) {
                 is VoiceInputViewModel.SpeechRecognitionState.Idle,
+                is VoiceInputViewModel.SpeechRecognitionState.Processing,
                 is VoiceInputViewModel.SpeechRecognitionState.Success,
                 is VoiceInputViewModel.SpeechRecognitionState.Error -> {
-                    // Initialize helper if needed
-                    if (helper == null) {
-                        helper = AndroidVoiceInputHelper(context, voiceViewModel)
-                    }
-                    helper?.startSpeechRecognition()
+                    helper.startSpeechRecognition()
                 }
                 is VoiceInputViewModel.SpeechRecognitionState.Listening -> {
-                    helper?.stopSpeechRecognition()
+                    helper.stopSpeechRecognition()
                 }
             }
         },
         modifier = Modifier.fillMaxWidth(),
+        enabled = speechState !is VoiceInputViewModel.SpeechRecognitionState.Processing,
         colors = ButtonDefaults.buttonColors(
             containerColor = when (speechState) {
                 is VoiceInputViewModel.SpeechRecognitionState.Listening ->
@@ -72,7 +103,9 @@ actual fun SpeechRecognitionButton(
             when (speechState) {
                 is VoiceInputViewModel.SpeechRecognitionState.Listening ->
                     "Stop Transcription"
-                else -> "Start Live Transcription"
+                is VoiceInputViewModel.SpeechRecognitionState.Processing ->
+                    "Processing..."
+                else -> "Start Voice Input"
             },
             color = Color.White,
             fontWeight = FontWeight.Medium
