@@ -9,6 +9,7 @@ import com.example.expensetracker.data.repository.IExpenseRepository
 import com.example.expensetracker.data.repository.SettingsRepository
 import com.example.expensetracker.data.repository.ISettingsRepository
 import com.example.expensetracker.domain.CurrencyConverter
+import com.example.expensetracker.domain.ICurrencyConverter
 import com.example.expensetracker.model.Currency
 import com.example.expensetracker.model.Expense
 import com.example.expensetracker.model.ExpenseWithConversion
@@ -28,7 +29,7 @@ import kotlinx.coroutines.launch
  * Uses CurrencyConverter, SettingsRepository, ExchangeRateRepository, and ExpenseRepository.
  */
 class CurrencyExchangeViewModel(
-    private val currencyConverter: CurrencyConverter = CurrencyConverter.getInstance(),
+    private val currencyConverter: ICurrencyConverter = CurrencyConverter.getInstance(),
     private val settingsRepository: ISettingsRepository = SettingsRepository.getInstance(),
     private val exchangeRateRepository: IExchangeRateRepository = ExchangeRateRepository.getInstance(),
     private val expenseRepository: IExpenseRepository = ExpenseRepository.getInstance()

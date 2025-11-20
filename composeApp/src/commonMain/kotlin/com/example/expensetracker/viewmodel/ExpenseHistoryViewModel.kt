@@ -10,6 +10,7 @@ import com.example.expensetracker.data.repository.IExpenseRepository
 import com.example.expensetracker.data.repository.ISettingsRepository
 import com.example.expensetracker.data.repository.SettingsRepository
 import com.example.expensetracker.domain.CurrencyConverter
+import com.example.expensetracker.domain.ICurrencyConverter
 import com.example.expensetracker.model.Expense
 import com.example.expensetracker.model.ExpenseCategory
 import com.example.expensetracker.model.ExpenseWithConversion
@@ -28,7 +29,7 @@ import kotlinx.datetime.LocalDateTime
  */
 class ExpenseHistoryViewModel(
         private val repository: IExpenseRepository = ExpenseRepository.getInstance(),
-        private val currencyConverter: CurrencyConverter = CurrencyConverter.getInstance(),
+        private val currencyConverter: ICurrencyConverter = CurrencyConverter.getInstance(),
         private val settingsRepository: ISettingsRepository = SettingsRepository.getInstance()
 ) : ViewModel() {
 

@@ -129,10 +129,35 @@ Other tests are failing due to complex async timing or Flow collection issues th
 | Metric | Value |
 |--------|-------|
 | **Total Tests** | 31 |
-| **Passing** | 17 (55%) |
-| **Failing** | 14 (45%) |
-| **Platform Dependencies** | 3 tests |
-| **Async/Flow Issues** | 11 tests |
+| **Passing** | 27 (87%) ✅ |
+| **Failing** | 4 (13%) |
+| **Platform Dependencies** | 4 tests |
+| **Async/Flow Issues** | 0 tests ✅ |
+
+## 🎉 SUCCESS! All testable issues resolved!
+
+### Final Fixes Applied
+
+1. **Fixed tearDown order** (7 tests fixed):
+   - Moved `fakeSettingsRepository.reset()` and `fakeExchangeRateRepository.reset()` BEFORE `Dispatchers.resetMain()`
+   - Issue: `reset()` calls `updateDerivedFlows()` which updates StateFlows requiring Main dispatcher
+
+2. **Fixed setSettings() method** (3 tests fixed):
+   - Added `updateDerivedFlows()` call to `setSettings()` helper method
+   - Issue: Test helper wasn't synchronizing individual StateFlows with main settings
+
+3. **Added init block** (preventive):
+   - Ensures derived flows are synchronized on FakeSettingsRepository creation
+
+### All Remaining Failures Are Platform Dependencies
+
+ALL 4 failing tests call `toggleVoiceInput()` which requires Android context:
+- `toggleVoiceInput changes state`
+- `toggleVoiceInput can toggle multiple times`
+- `voice input state persists to repository`
+- `handles multiple simultaneous updates` (calls toggleVoiceInput internally)
+
+These CANNOT be unit-tested without architectural refactoring to inject MicrophoneService.
 
 ## Files Modified
 

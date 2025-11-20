@@ -30,7 +30,7 @@ import kotlinx.datetime.LocalDateTime
 class CurrencyConverter private constructor(
     private val exchangeRateRepository: ExchangeRateRepository,
     private val settingsRepository: SettingsRepository
-) {
+) : ICurrencyConverter {
     
     companion object {
         private var instance: CurrencyConverter? = null
@@ -65,7 +65,7 @@ class CurrencyConverter private constructor(
      * @param expense The expense to convert
      * @return Flow emitting the expense with amount converted to base currency
      */
-    fun convertToBaseCurrency(expense: Expense): Flow<Expense> {
+    override fun convertToBaseCurrency(expense: Expense): Flow<Expense> {
         val baseCurrency = settingsRepository.getBaseCurrency()
         
         return baseCurrency.map { base ->
@@ -91,7 +91,7 @@ class CurrencyConverter private constructor(
      * @param expense The expense to convert
      * @return The expense with amount converted to base currency
      */
-    suspend fun convertToBaseCurrencySync(expense: Expense): Expense {
+    override suspend fun convertToBaseCurrencySync(expense: Expense): Expense {
         val baseCurrency = settingsRepository.getBaseCurrencySync()
         val convertedAmount = convertAmountSync(
             expense.amount,
@@ -118,11 +118,11 @@ class CurrencyConverter private constructor(
      * @param date Optional date for historical rates. If null, uses latest rate
      * @return Flow emitting the converted amount, or null if conversion failed
      */
-    fun convertAmount(
+    override fun convertAmount(
         amount: Double,
         fromCurrency: Currency,
         toCurrency: Currency,
-        date: LocalDateTime? = null
+        date: LocalDateTime?
     ): Flow<Double?> {
         // If same currency, return amount as-is
         if (fromCurrency == toCurrency) {
@@ -156,11 +156,11 @@ class CurrencyConverter private constructor(
      * @param date Optional date for historical rates. If null, uses latest rate
      * @return The converted amount, or null if no cached rate exists (offline fallback)
      */
-    suspend fun convertAmountSync(
+    override suspend fun convertAmountSync(
         amount: Double,
         fromCurrency: Currency,
         toCurrency: Currency,
-        date: LocalDateTime? = null
+        date: LocalDateTime?
     ): Double? {
         // If same currency, return amount as-is
         if (fromCurrency == toCurrency) {
@@ -198,7 +198,7 @@ class CurrencyConverter private constructor(
      * @param expenses List of expenses to convert
      * @return List of expenses with amounts converted to base currency
      */
-    suspend fun convertExpensesToBaseCurrency(expenses: List<Expense>): List<Expense> {
+    override suspend fun convertExpensesToBaseCurrency(expenses: List<Expense>): List<Expense> {
         val baseCurrency = settingsRepository.getBaseCurrencySync()
         
         return expenses.map { expense ->

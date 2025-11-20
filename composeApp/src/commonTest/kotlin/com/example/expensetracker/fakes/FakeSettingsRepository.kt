@@ -31,6 +31,11 @@ class FakeSettingsRepository : ISettingsRepository {
     private val _themeOption = MutableStateFlow(_settings.value.themeOption)
     private val _voiceInputEnabled = MutableStateFlow(_settings.value.isVoiceInputEnabled)
     
+    init {
+        // Ensure derived flows are synchronized on initialization
+        updateDerivedFlows()
+    }
+    
     // Test control flags
     var shouldThrowError = false
     var errorMessage = "Test error"
@@ -296,6 +301,7 @@ class FakeSettingsRepository : ISettingsRepository {
      */
     fun setSettings(settings: AppSettings) {
         _settings.value = settings
+        updateDerivedFlows()
     }
     
     /**
