@@ -1,5 +1,6 @@
 package com.example.expensetracker.services
 
+import android.graphics.Bitmap
 import android.media.Image
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
@@ -53,6 +54,36 @@ class TextRecognitionAnalyzer(
         }.invokeOnCompletion { exception ->
             exception?.printStackTrace()
             imageProxy.close()
+        }
+    }
+    // NEW METHOD: Analyze static bitmap (for captured photos)
+    fun analyzeBitmap(bitmap: Bitmap, rotationDegrees: Int = 0) {
+        scope.launch {
+            try {
+                val inputImage = InputImage.fromBitmap(bitmap, rotationDegrees)
+
+                suspendCoroutine { continuation ->
+                    textRecognizer.process(inputImage)
+                        .addOnSuccessListener { visionText: Text ->
+                            val detectedText: String = visionText.text
+                            if (detectedText.isNotBlank()) {
+                                onDetectedTextUpdated(detectedText)
+                            } else {
+                                onDetectedTextUpdated("No text detected")
+                            }
+                        }
+                        .addOnFailureListener { exception ->
+                            exception.printStackTrace()
+                            onDetectedTextUpdated("Recognition error: ${exception.message}")
+                        }
+                        .addOnCompleteListener {
+                            continuation.resume(Unit)
+                        }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                onDetectedTextUpdated("Analysis error: ${e.message}")
+            }
         }
     }
 }
