@@ -16,21 +16,40 @@ class AndroidVoiceInputHelper(
     private var speechRecognizerService: AndroidSpeechRecognizerService? = null
 
     fun startSpeechRecognition() {
-        if (speechRecognizerService == null) {
-            speechRecognizerService = AndroidSpeechRecognizerService(context)
+        // Always clean up any existing service first to prevent ERROR_RECOGNIZER_BUSY (error 11)
+        if (speechRecognizerService != null) {
+            try {
+                speechRecognizerService?.destroy()
+            } catch (e: Exception) {
+                // Ignore cleanup errors
+            }
+            speechRecognizerService = null
+        }
+        
+        // Small delay to ensure cleanup completes
+        Thread.sleep(100)
+        
+        speechRecognizerService = AndroidSpeechRecognizerService(context)
 
-            // Collect partial results
-            viewModel.viewModelScope.launch {
+        // Collect partial results
+        viewModel.viewModelScope.launch {
+            try {
                 speechRecognizerService?.partialResults?.collect { partial ->
                     viewModel.onPartialTranscription(partial)
                 }
+            } catch (e: Exception) {
+                // Collection ended
             }
+        }
 
-            // Collect final results
-            viewModel.viewModelScope.launch {
+        // Collect final results
+        viewModel.viewModelScope.launch {
+            try {
                 speechRecognizerService?.finalResult?.collect { result ->
                     viewModel.onSpeechResult(result)
                 }
+            } catch (e: Exception) {
+                // Collection ended
             }
         }
 
@@ -40,6 +59,7 @@ class AndroidVoiceInputHelper(
 
     fun stopSpeechRecognition() {
         speechRecognizerService?.stopListening()
+        viewModel.stopSpeechRecognition()
     }
 
     fun cleanup() {

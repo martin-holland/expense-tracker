@@ -45,6 +45,7 @@ class VoiceInputViewModel : ViewModel() {
     sealed class SpeechRecognitionState {
         object Idle : SpeechRecognitionState()
         object Listening : SpeechRecognitionState()
+        object Processing : SpeechRecognitionState()  // New state for when audio is being processed
         data class Success(
             val transcription: String,
             val confidence: Float,
@@ -104,9 +105,10 @@ class VoiceInputViewModel : ViewModel() {
 
     /**
      * Stop speech recognition (will be called from platform-specific helper)
+     * Moves to Processing state while waiting for results
      */
     fun stopSpeechRecognition() {
-        // Platform-specific implementation will handle this
+        _speechRecognitionState.value = SpeechRecognitionState.Processing
     }
 
     /**
@@ -118,6 +120,7 @@ class VoiceInputViewModel : ViewModel() {
 
     /**
      * Handle final transcription result
+     * Auto-parses the transcription immediately for smoother UX
      */
     fun onSpeechResult(result: SpeechRecognitionResult) {
         when (result) {
@@ -127,11 +130,25 @@ class VoiceInputViewModel : ViewModel() {
                     confidence = result.confidence,
                     alternatives = result.alternatives.map { it.text }
                 )
+                // Auto-parse transcription immediately for better UX
+                parseTranscription(result.text)
+                // Notify that we're done with the recognizer
+                _recognizerReadyForCleanup.value = true
             }
             is SpeechRecognitionResult.Error -> {
                 _speechRecognitionState.value = SpeechRecognitionState.Error(result.message)
+                // Notify that we're done with the recognizer
+                _recognizerReadyForCleanup.value = true
             }
         }
+    }
+    
+    // Signal for when recognizer can be cleaned up
+    private val _recognizerReadyForCleanup = MutableStateFlow(false)
+    val recognizerReadyForCleanup: StateFlow<Boolean> = _recognizerReadyForCleanup.asStateFlow()
+    
+    fun acknowledgeCleanup() {
+        _recognizerReadyForCleanup.value = false
     }
 
     /**
@@ -140,6 +157,7 @@ class VoiceInputViewModel : ViewModel() {
     fun resetSpeechRecognition() {
         _speechRecognitionState.value = SpeechRecognitionState.Idle
         _partialTranscription.value = ""
+        _parsedExpenseData.value = null
     }
 
     // NEW: Parsed expense data state
@@ -170,5 +188,88 @@ class VoiceInputViewModel : ViewModel() {
      */
     fun clearParsedData() {
         _parsedExpenseData.value = null
+    }
+
+    // NEW: Manual text entry state (fallback when transcription fails)
+    private val _manualEntryText = MutableStateFlow("")
+    val manualEntryText: StateFlow<String> = _manualEntryText.asStateFlow()
+
+    private val _showManualEntry = MutableStateFlow(false)
+    val showManualEntry: StateFlow<Boolean> = _showManualEntry.asStateFlow()
+
+    /**
+     * Enable manual text entry mode (fallback for transcription failures)
+     */
+    fun enableManualEntry() {
+        _showManualEntry.value = true
+        _manualEntryText.value = ""
+    }
+
+    /**
+     * Update manual entry text
+     */
+    fun onManualEntryTextChanged(text: String) {
+        _manualEntryText.value = text
+    }
+
+    /**
+     * Parse manually entered text
+     */
+    fun parseManualEntry() {
+        if (_manualEntryText.value.isNotBlank()) {
+            parseTranscription(_manualEntryText.value)
+            _showManualEntry.value = false
+        }
+    }
+
+    /**
+     * Cancel manual entry
+     */
+    fun cancelManualEntry() {
+        _showManualEntry.value = false
+        _manualEntryText.value = ""
+    }
+    
+    /**
+     * Cancel all voice input operations and reset to clean state
+     * This is the master cancel that clears everything
+     */
+    fun cancelVoiceInput() {
+        // Reset speech recognition state
+        _speechRecognitionState.value = SpeechRecognitionState.Idle
+        _partialTranscription.value = ""
+        
+        // Clear parsed data
+        _parsedExpenseData.value = null
+        
+        // Cancel manual entry if active
+        _showManualEntry.value = false
+        _manualEntryText.value = ""
+        
+        // Clear any errors
+        _errorMessage.value = null
+        
+        // Reset recognizer cleanup flag
+        _recognizerReadyForCleanup.value = false
+    }
+
+    /**
+     * Update an individual field in the parsed expense data
+     * This allows manual correction of specific fields
+     */
+    fun updateParsedField(
+        amount: Double? = null,
+        currency: com.example.expensetracker.model.Currency? = null,
+        category: com.example.expensetracker.model.ExpenseCategory? = null,
+        description: String? = null
+    ) {
+        val currentData = _parsedExpenseData.value ?: return
+        
+        _parsedExpenseData.value = currentData.copy(
+            amount = amount ?: currentData.amount,
+            currency = currency ?: currentData.currency,
+            category = category ?: currentData.category,
+            description = description ?: currentData.description
+        )
     }
 }
