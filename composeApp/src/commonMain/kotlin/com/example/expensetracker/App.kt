@@ -27,7 +27,8 @@ enum class AppScreen(val title: String, val icon: ImageVector) {
     DASHBOARD("Dashboard", Icons.Filled.Dashboard),
     ADD("Add", Icons.Filled.Add),
     HISTORY("History", Icons.Filled.History),
-    SETTINGS("Settings", Icons.Filled.Settings)
+    SETTINGS("Settings", Icons.Filled.Settings),
+
 }
 
 @Composable

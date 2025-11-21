@@ -74,6 +74,8 @@ kotlin {
             //log
             implementation("io.github.aakira:napier:${napierVersion}")
 
+            // Text Recognization
+            implementation("com.google.mlkit:text-recognition:16.0.1")
 
 
 
