@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -43,15 +44,21 @@ import com.example.expensetracker.services.CameraState
 import com.example.expensetracker.services.TextRecognitionAnalyzer
 import com.example.expensetracker.services.decodeByteArrayToImageBitmap
 import com.example.expensetracker.services.getCameraService
+import com.example.expensetracker.services.getImageStorageService
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
 actual fun CameraScreen() {
     val cameraService = getCameraService()
+    val imageStorageService = remember { getImageStorageService() }  // Add this
+
     var photoData by remember { mutableStateOf<ByteArray?>(null) }
     var imageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     var isProcessing by remember { mutableStateOf(false) }
     var cameraState by remember { mutableStateOf(cameraService.getCameraState()) }
+    var saveStatus by remember { mutableStateOf<String?>(null) }  // Add this
+
     val scope = rememberCoroutineScope()
 
     var detectedText: String by remember { mutableStateOf("No text detected yet..") }
@@ -408,29 +415,64 @@ actual fun CameraScreen() {
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Retake Photo")
                 }
-            }
-
-            // Close Camera button (pauses to IDLE state with 30s timeout)
-            if (cameraState == CameraState.READY || cameraState == CameraState.CAPTURING) {
                 Button(
                     onClick = {
                         scope.launch {
-                            println("⏸️ CameraScreen: User closing camera, entering IDLE state...")
-                            cameraService.pauseCamera()
-                            cameraState = cameraService.getCameraState()
+                            saveStatus = "Saving..."
+                            val result = imageStorageService.saveImageToGallery(photoData!!)
+                            saveStatus = result.fold(
+                                onSuccess = { "✅ Saved to gallery!" },
+                                onFailure = { "❌ Failed: ${it.message}" }
+                            )
+                            // Clear status after 3 seconds
+                            delay(3000)
+                            saveStatus = null
                         }
                     },
-                    enabled = !isProcessing,
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.tertiary
-                        )
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
                 ) {
-                    Text("⏸️")
+                    Text("💾")
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Close Camera")
+                    Text("Save")
                 }
             }
+        }
+        saveStatus?.let { status ->
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = status,
+                style = MaterialTheme.typography.bodyMedium,
+                color = when {
+                    status.startsWith("✅") -> MaterialTheme.colorScheme.primary
+                    status.startsWith("❌") -> MaterialTheme.colorScheme.error
+                    else -> MaterialTheme.colorScheme.onSurface
+                }
+            )
+        }
+
+            // Close Camera button (pauses to IDLE state with 30s timeout)
+//            if (cameraState == CameraState.READY || cameraState == CameraState.CAPTURING) {
+//                Button(
+//                    onClick = {
+//                        scope.launch {
+//                            println("⏸️ CameraScreen: User closing camera, entering IDLE state...")
+//                            cameraService.pauseCamera()
+//                            cameraState = cameraService.getCameraState()
+//                        }
+//                    },
+//                    enabled = !isProcessing,
+//                    colors =
+//                        ButtonDefaults.buttonColors(
+//                            containerColor = MaterialTheme.colorScheme.tertiary
+//                        )
+//                ) {
+//                    Text("⏸️")
+//                    Spacer(modifier = Modifier.width(8.dp))
+//                    Text("Close Camera")
+//                }
+//            }
 
             // Clear Photo button (alternative action when photo exists)
             if (photoData != null && cameraState == CameraState.READY) {
@@ -454,4 +496,4 @@ actual fun CameraScreen() {
         Spacer(modifier = Modifier.height(16.dp))
 
     }
-}
+
