@@ -1,10 +1,5 @@
 package com.example.expensetracker.view.components.camera
 
-import android.content.Context
-import android.graphics.Bitmap
-import androidx.camera.core.AspectRatio
-import androidx.camera.view.CameraController
-import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -42,8 +37,6 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.expensetracker.services.AndroidCameraService
 import com.example.expensetracker.services.CameraState
