@@ -13,6 +13,7 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.coroutines.resume
@@ -23,16 +24,24 @@ class TextRecognitionAnalyzer(
     private val onDetectedTextUpdated: (String) -> Unit
 ) : ImageAnalysis.Analyzer {
 
-    companion object {
-        const val THROTTLE_TIMEOUT_MS = 1_000L
-    }
-
+    companion object { const val THROTTLE_TIMEOUT_MS = 1_000L }
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val textRecognizer: TextRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+
+    // ✅ Add this: Track last analysis time
+    private var lastAnalysisTime = 0L
 
     @ExperimentalGetImage
     @OptIn(ExperimentalGetImage::class)
     override fun analyze(imageProxy: ImageProxy) {
+        // ✅ Check if enough time has passed BEFORE processing
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastAnalysisTime < THROTTLE_TIMEOUT_MS) {
+            imageProxy.close() // Skip this frame
+            return
+        }
+        lastAnalysisTime = currentTime // Update timestamp
+
         scope.launch {
             val mediaImage: Image = imageProxy.image ?: run { imageProxy.close(); return@launch }
             val inputImage: InputImage = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
@@ -50,7 +59,7 @@ class TextRecognitionAnalyzer(
                     }
             }
 
-            delay(THROTTLE_TIMEOUT_MS)
+//            delay(THROTTLE_TIMEOUT_MS)
         }.invokeOnCompletion { exception ->
             exception?.printStackTrace()
             imageProxy.close()
@@ -85,5 +94,10 @@ class TextRecognitionAnalyzer(
                 onDetectedTextUpdated("Analysis error: ${e.message}")
             }
         }
+    }
+
+    fun cleanup(){
+        scope.cancel()
+        textRecognizer.close()
     }
 }

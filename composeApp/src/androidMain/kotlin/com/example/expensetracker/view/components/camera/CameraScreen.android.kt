@@ -109,6 +109,7 @@ actual fun CameraScreen() {
             scope.launch {
                 cameraService.pauseCamera()
                 cameraState = cameraService.getCameraState()
+                textAnalyzer.cleanup()
             }
         }
     }
@@ -461,25 +462,3 @@ actual fun CameraScreen() {
 
     }
 }
-
-private fun startTextRecognition(
-    context: Context,
-    cameraController: LifecycleCameraController,
-    lifecycleOwner: LifecycleOwner,
-    previewView: PreviewView,
-    onDetectedTextUpdated: (String) -> Unit
-) {
-
-    cameraController.imageAnalysisTargetSize = CameraController.OutputSize(AspectRatio.RATIO_16_9)
-    cameraController.setImageAnalysisAnalyzer(
-        ContextCompat.getMainExecutor(context),
-        TextRecognitionAnalyzer(onDetectedTextUpdated = onDetectedTextUpdated)
-    )
-
-    cameraController.bindToLifecycle(lifecycleOwner)
-    previewView.controller = cameraController
-}
-
-//fun ImageBitmap.asAndroidBitmap(): Bitmap {
-//    return this.asAndroidBitmap()
-//}
