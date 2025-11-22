@@ -30,7 +30,7 @@ fun MonthlySpendCard(
         Column(Modifier.padding(20.dp)) {
             Text("Total Monthly Spend", color = Color.White)
             Text(
-                text = "${currency.symbol}${spend.format(2)}",
+                text = "${currency.symbol}${spend.formatAmount(2)}",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
