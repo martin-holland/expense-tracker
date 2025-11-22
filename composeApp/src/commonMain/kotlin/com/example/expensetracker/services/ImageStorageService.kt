@@ -1,8 +1,12 @@
 package com.example.expensetracker.services
 
+data class SavedImageResult(
+    val uri: String,
+    val filePath: String
+)
+
 expect class ImageStorageService {
-    suspend fun saveImageToGallery(imageBytes: ByteArray, filename: String? = null): Result<String>
+    suspend fun saveImageToGallery(imageBytes: ByteArray, filename: String? = null): Result<SavedImageResult>
 }
 
-// Factory function to get the service instance
 expect fun getImageStorageService(): ImageStorageService

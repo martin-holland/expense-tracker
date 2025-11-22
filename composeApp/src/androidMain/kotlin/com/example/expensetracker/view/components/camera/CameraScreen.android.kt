@@ -45,6 +45,7 @@ import com.example.expensetracker.services.TextRecognitionAnalyzer
 import com.example.expensetracker.services.decodeByteArrayToImageBitmap
 import com.example.expensetracker.services.getCameraService
 import com.example.expensetracker.services.getImageStorageService
+import io.github.aakira.napier.Napier
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -58,6 +59,7 @@ actual fun CameraScreen() {
     var isProcessing by remember { mutableStateOf(false) }
     var cameraState by remember { mutableStateOf(cameraService.getCameraState()) }
     var saveStatus by remember { mutableStateOf<String?>(null) }  // Add this
+    var savedImagePath by remember { mutableStateOf<String?>(null)}
 
     val scope = rememberCoroutineScope()
 
@@ -420,8 +422,18 @@ actual fun CameraScreen() {
                         scope.launch {
                             saveStatus = "Saving..."
                             val result = imageStorageService.saveImageToGallery(photoData!!)
+                            Napier.d("result ${result}", tag = "DDD")
                             saveStatus = result.fold(
-                                onSuccess = { "✅ Saved to gallery!" },
+                                onSuccess = { savedResult ->
+                                    println("📁 URI: ${savedResult.uri}")
+                                    println("📁 File path: ${savedResult.filePath}")
+                                    savedImagePath = savedResult.filePath
+                                    saveStatus = "✅ Saved!"
+                                    Napier.d("URI: ${savedResult.uri}", tag = "DDD")
+                                    Napier.d("filepath: ${savedResult.filePath}", tag = "DDD")
+
+                                    "Saved to storage"
+                                },
                                 onFailure = { "❌ Failed: ${it.message}" }
                             )
                             // Clear status after 3 seconds
